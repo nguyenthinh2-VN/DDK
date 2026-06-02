@@ -1,11 +1,5 @@
 """
 Scan Schemas (DTO) - Request/Response models cho API.
-
-Tương đương: DTO (Data Transfer Object) trong Spring.
-
-Tầng DTO: định nghĩa dữ liệu truyền qua API, KHÔNG phải entity database.
-- Schema dùng cho validation input (request body)
-- Schema dùng cho format output (response body)
 """
 
 from datetime import datetime

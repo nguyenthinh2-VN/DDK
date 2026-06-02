@@ -1,0 +1,33 @@
+{
+  "common": {
+    "success": "Thành công",
+    "error": "Đã có lỗi xảy ra",
+    "unauthorized": "Bạn chưa đăng nhập hoặc phiên đã hết hạn",
+    "forbidden": "Bạn không có quyền thực hiện thao tác này",
+    "not_found": "Không tìm thấy dữ liệu",
+    "validation_error": "Dữ liệu không hợp lệ"
+  },
+  "auth": {
+    "login_success": "Đăng nhập thành công",
+    "logout_success": "Đăng xuất thành công",
+    "invalid_credentials": "Tên đăng nhập hoặc mật khẩu không đúng",
+    "account_inactive": "Tài khoản đã bị vô hiệu hóa",
+    "token_invalid": "Token không hợp lệ",
+    "token_expired": "Token đã hết hạn",
+    "password_changed": "Đổi mật khẩu thành công",
+    "old_password_incorrect": "Mật khẩu cũ không chính xác"
+  },
+  "user": {
+    "not_found": "Không tìm thấy người dùng",
+    "already_exists": "Tên đăng nhập đã tồn tại",
+    "created": "Tạo người dùng thành công",
+    "updated": "Cập nhật người dùng thành công",
+    "deleted": "Xóa người dùng thành công"
+  },
+  "role": {
+    "not_found": "Không tìm thấy vai trò",
+    "permission_assigned": "Gán quyền thành công",
+    "permission_removed": "Bỏ quyền thành công",
+    "permission_not_found": "Không tìm thấy quyền"
+  }
+}

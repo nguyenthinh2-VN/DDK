@@ -1,0 +1,33 @@
+{
+  "common": {
+    "success": "成功",
+    "error": "發生錯誤",
+    "unauthorized": "您尚未登入或工作階段已過期",
+    "forbidden": "您沒有權限執行此操作",
+    "not_found": "未找到資料",
+    "validation_error": "資料無效"
+  },
+  "auth": {
+    "login_success": "登入成功",
+    "logout_success": "登出成功",
+    "invalid_credentials": "使用者名稱或密碼錯誤",
+    "account_inactive": "帳戶已被停用",
+    "token_invalid": "權杖無效",
+    "token_expired": "權杖已過期",
+    "password_changed": "密碼修改成功",
+    "old_password_incorrect": "舊密碼不正確"
+  },
+  "user": {
+    "not_found": "使用者不存在",
+    "already_exists": "使用者名稱已存在",
+    "created": "使用者建立成功",
+    "updated": "使用者更新成功",
+    "deleted": "使用者刪除成功"
+  },
+  "role": {
+    "not_found": "角色不存在",
+    "permission_assigned": "權限指派成功",
+    "permission_removed": "權限移除成功",
+    "permission_not_found": "未找到權限"
+  }
+}

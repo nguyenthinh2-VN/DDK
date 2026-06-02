@@ -20,8 +20,28 @@ class Settings(BaseSettings):
     HOST: str = "0.0.0.0"
     PORT: int = 8000
 
-    # ── Database ─────────────────────────────────────
-    DATABASE_URL: str = "sqlite+aiosqlite:///./ddk_ocr.db"
+    # ── Database (MySQL) ─────────────────────────────
+    # Format: mysql+aiomysql://<user>:<password>@<host>:<port>/<db>
+    DATABASE_URL: str = "mysql+aiomysql://root:root@localhost:3306/ddk_ocr"
+
+    # ── Security / JWT ───────────────────────────────
+    SECRET_KEY: str = "CHANGE_ME_IN_PRODUCTION_use_a_long_random_string"
+    JWT_ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 480  # 8 giờ
+
+    # ── i18n ─────────────────────────────────────────
+    DEFAULT_LANGUAGE: str = "vi"
+    SUPPORTED_LANGUAGES: str = "vi,tw"
+
+    # ── First Admin (dùng cho script create_admin) ───
+    FIRST_ADMIN_USERNAME: str = "admin"
+    FIRST_ADMIN_PASSWORD: str = "Admin@123"
+    FIRST_ADMIN_FULLNAME: str = "System Administrator"
+
+    @property
+    def supported_languages_list(self) -> list[str]:
+        """Trả về danh sách ngôn ngữ được hỗ trợ."""
+        return [lang.strip() for lang in self.SUPPORTED_LANGUAGES.split(",")]
 
     # ── Upload ───────────────────────────────────────
     UPLOAD_DIR: str = "uploads"

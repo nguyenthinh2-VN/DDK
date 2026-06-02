@@ -9,6 +9,7 @@ from app.config.settings import settings
 engine = create_async_engine(
     settings.DATABASE_URL,
     echo=settings.DEBUG,
+    pool_recycle=3600,    # Tái tạo connection sau 1 giờ (MySQL mặc định timeout 8 giờ)
 )
 
 # Session factory
