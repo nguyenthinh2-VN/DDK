@@ -155,6 +155,31 @@ def _build_mock_result(filename: str) -> dict:
     }
 
 
+def _convert_s2t(ocr_json: dict) -> dict:
+    """Chuyển đổi giản thể sang phồn thể cho các trường văn bản."""
+    if not settings.OCR_S2T_ENABLED:
+        return ocr_json
+    try:
+        import opencc
+        converter = opencc.OpenCC(settings.OCR_S2T_CONFIG)
+        
+        info = ocr_json.get("info", {})
+        if "ho_ten" in info:
+            info["ho_ten"] = converter.convert(info["ho_ten"])
+        if "chu_quan" in info:
+            info["chu_quan"] = converter.convert(info["chu_quan"])
+            
+        for item in ocr_json.get("line_items", []):
+            if "hang_muc" in item:
+                item["hang_muc"] = converter.convert(item["hang_muc"])
+            if "muc_dich" in item:
+                item["muc_dich"] = converter.convert(item["muc_dich"])
+                
+    except ImportError:
+        pass
+    return ocr_json
+
+
 def run_ocr(image_path: str, original_filename: str) -> dict:
     """
     Pipeline OCR cho 1 ảnh phiếu.
@@ -177,9 +202,7 @@ def run_ocr(image_path: str, original_filename: str) -> dict:
 
     from app.ocr.paddleocr_vl_client import (
         PaddleOCRVLError,
-        download_jsonl,
-        poll_job,
-        submit_job,
+        call_sync,
     )
 
     # 1. (Tùy chọn) Preprocess
@@ -191,12 +214,9 @@ def run_ocr(image_path: str, original_filename: str) -> dict:
         raise RuntimeError("PADDLEOCR_VL_TOKEN chưa cấu hình trong .env")
 
     try:
-        job_id = submit_job(processed, token=token)
-        data = poll_job(job_id, token=token)
-        jsonl_url = (data.get("resultUrl") or {}).get("jsonUrl")
-        if not jsonl_url:
-            raise PaddleOCRVLError("API trả done nhưng thiếu jsonUrl")
-        results = download_jsonl(jsonl_url)
+        url = settings.PADDLEOCR_VL_SYNC_URL
+        sync_result = call_sync(processed, token=token, url=url)
+        results = [sync_result]
     except (PaddleOCRVLError, Exception) as exc:
         # Nếu API lỗi, trả kết quả rỗng + error
         return {
@@ -216,14 +236,36 @@ def run_ocr(image_path: str, original_filename: str) -> dict:
 
     # 3. Parse kết quả
     markdown_text = ""
+    bbox_image_url = ""
+    straightened_image_url = ""
     if results:
         page_result = results[0].get("result", {})
+        
+        # Lấy ảnh nắn thẳng từ AI
+        prep_imgs = page_result.get("preprocessedImages", [])
+        if prep_imgs:
+            straightened_image_url = prep_imgs[0]
+            
         for layout in page_result.get("layoutParsingResults", []):
             markdown_text = layout.get("markdown", {}).get("text", "")
+            output_images = layout.get("outputImages") or {}
+            for img_name, img_url in output_images.items():
+                if "layout" in img_name.lower() or "res" in img_name.lower():
+                    bbox_image_url = img_url
+                    break
             break
 
     table_html = _extract_table_html(markdown_text)
     ocr_json = _extract_fields_from_markdown(markdown_text)
+    
+    if bbox_image_url:
+        ocr_json["bbox_image_url"] = bbox_image_url
+    if straightened_image_url:
+        ocr_json["straightened_image_url"] = straightened_image_url
+    
+    # 4. Chuyển giản thể sang phồn thể
+    ocr_json = _convert_s2t(ocr_json)
+    
     ocr_text = re.sub(r"<[^>]+>", "", markdown_text).strip()
 
     return {

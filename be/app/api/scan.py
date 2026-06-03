@@ -58,6 +58,36 @@ router = APIRouter(prefix="/api/scan", tags=["Scan OCR"])
 
 
 @router.post(
+    "/upload",
+    response_model=ScanResultResponse,
+    summary="Upload 1 ảnh phiếu để scan OCR (đồng bộ)",
+)
+async def upload_single(
+    file: UploadFile = File(...),
+    lang: str = Depends(get_language),
+    current_user: User = Depends(require_permission("scan:upload")),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Upload 1 file, gọi OCR ngay trong request và trả về kết quả (đơn luồng).
+    Dùng cho trường hợp cần kết quả ngay lập tức thay vì xử lý nền.
+    """
+    if not validate_file_extension(file.filename):
+        raise LocalizedHTTPException(
+            status.HTTP_400_BAD_REQUEST, "scan.file_invalid_ext", lang
+        )
+    content = await file.read()
+    if not validate_file_size(content):
+        raise LocalizedHTTPException(
+            status.HTTP_400_BAD_REQUEST, "scan.file_too_large", lang
+        )
+    image_path = await save_upload_file(content, file.filename)
+    
+    scan = await OCRService.process_single(db, (file.filename, image_path), uploaded_by=current_user.id)
+    return scan
+
+
+@router.post(
     "/batch",
     response_model=BatchUploadResponse,
     status_code=status.HTTP_202_ACCEPTED,

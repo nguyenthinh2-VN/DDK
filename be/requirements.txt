@@ -2,8 +2,6 @@ fastapi==0.115.12
 uvicorn[standard]==0.34.3
 pydantic==2.11.3
 pydantic-settings==2.9.1
-paddleocr==2.10.0
-paddlepaddle==3.1.0
 # OpenCV (cv2) - tiền xử lý ảnh trước OCR (deskew, khử nhiễu, threshold).
 # Thực tế paddleocr đã kéo sẵn opencv-python; liệt kê tường minh để tài liệu hóa.
 # KHÔNG thêm opencv-python-headless để tránh xung đột nhiều bản OpenCV.
@@ -21,3 +19,4 @@ python-jose[cryptography]==3.5.0
 passlib[bcrypt]==1.7.4
 bcrypt==4.0.1
 requests==2.32.3
+opencc-python-reimplemented==0.1.7

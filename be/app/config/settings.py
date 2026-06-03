@@ -56,8 +56,12 @@ class Settings(BaseSettings):
     # ── OCR (PaddleOCR-VL API) ───────────────────────
     OCR_ENABLED: bool = False                 # False = mock; True = gọi PaddleOCR-VL API
     OCR_PREPROCESS_ENABLED: bool = False      # bật/tắt OpenCV preprocess trước khi gửi API
+    OCR_S2T_ENABLED: bool = True              # chuyển giản thể sang phồn thể
+    OCR_S2T_CONFIG: str = "s2t"
     PADDLEOCR_VL_TOKEN: str = ""              # Token aistudio (bắt buộc khi OCR_ENABLED=true)
     PADDLEOCR_VL_MODEL: str = "PaddleOCR-VL-1.6"
+    PADDLEOCR_VL_SYNC_URL: str = "https://hanaj6q2m6oc0bpa.aistudio-app.com/layout-parsing"
+    PADDLEOCR_VL_ASYNC_URL: str = "https://paddleocr.aistudio-app.com/api/v2/ocr/jobs"
 
     @property
     def allowed_extensions_list(self) -> list[str]:

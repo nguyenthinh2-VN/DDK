@@ -1,224 +1,229 @@
-# 📡 API Specification - Scan OCR
+# 📄 API Specification - Scan & OCR
 
-> Tài liệu API cho FE team xây dựng giao diện.  
-> Base URL: `http://localhost:8000`  
-> Swagger UI: `http://localhost:8000/docs`
-
----
-
-## 1. Health Check
-
-```
-GET /
-```
-
-**Response** `200 OK`
-```json
-{
-  "app": "DDK-OCR-Service",
-  "version": "1.0.0",
-  "status": "running",
-  "docs": "/docs"
-}
-```
+> Tài liệu API cho FE team tích hợp tính năng Upload ảnh, xử lý OCR và quản lý kết quả.
+> Base URL: `http://localhost:8000`
+> Tất cả API trong module này đều yêu cầu **Authentication (JWT Token)**.
+> FE cần gửi header `Accept-Language: vi` hoặc `tw` để nhận thông báo đúng ngôn ngữ.
 
 ---
 
-## 2. Upload & Scan OCR
+## 1. Upload & Xử lý OCR
 
+### 1.1 Upload 1 Ảnh (Đơn luồng / Đồng bộ)
 ```
 POST /api/scan/upload
 Content-Type: multipart/form-data
 ```
+**Quyền yêu cầu**: `scan:upload`
 
-**Request Body**
-| Field | Type | Required | Mô tả |
-|---|---|---|---|
-| `file` | File | ✅ | File ảnh (.jpg, .png, .bmp, .tiff) hoặc .pdf |
+> Nhận vào 1 file ảnh, đẩy sang cho PaddleOCR xử lý và **chờ đến khi có kết quả mới trả về**.
+> Sử dụng khi cần test nhanh hoặc luồng xử lý yêu cầu phản hồi ngay lập tức.
 
-**Response** `201 Created`
-```json
-{
-  "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-  "original_filename": "bai_viet_tay.jpg",
-  "status": "completed",
-  "message": "Upload thành công, đã xử lý OCR"
-}
-```
+**Request Form-Data**
+- `file`: 1 file ảnh (`.jpg`, `.jpeg`, `.png`, v.v.)
 
-**Error Responses**
-| Status | Mô tả |
-|---|---|
-| `400` | File không hợp lệ (sai extension, quá lớn) |
-| `500` | Lỗi xử lý OCR |
+**Response** `200 OK`
+Trả về ngay Object `ScanResultResponse` (tương tự như API 2.2).
 
 ---
 
-## 3. Lấy kết quả scan theo ID
-
+### 1.2 Upload Batch (Đa luồng / Bất đồng bộ)
 ```
-GET /api/scan/{scan_id}
+POST /api/scan/batch
+Content-Type: multipart/form-data
+```
+**Quyền yêu cầu**: `scan:upload`
+
+> Nhận vào từ 3 đến 5 ảnh. Hệ thống sẽ lưu file, tạo dữ liệu `batch`, và **trả về ngay lập tức** (HTTP 202). 
+> Quá trình gọi AI (PaddleOCR-VL) diễn ra dưới nền. FE cần dùng `batch_id` để polling tiến độ ở API `1.3`.
+
+**Request Form-Data**
+- `files`: Mảng các file ảnh (Tối thiểu 3, tối đa 5). Hỗ trợ `.jpg`, `.jpeg`, `.png`, v.v.
+
+**Response** `202 Accepted`
+```json
+{
+  "batch_id": "b1234567-89ab-cdef-0123-456789abcdef",
+  "total_files": 3,
+  "status": "processing",
+  "message": "Đã nhận 3 file, đang tiến hành OCR...",
+  "items": [
+    {
+      "scan_id": "s1234567-...",
+      "original_filename": "anh_1.jpg",
+      "status": "pending"
+    }
+  ]
+}
 ```
 
-**Path Parameters**
-| Param | Type | Mô tả |
-|---|---|---|
-| `scan_id` | string (UUID) | ID của scan result |
+---
+
+### 1.3 Polling tiến độ Batch
+```
+GET /api/scan/batch/{batch_id}
+```
+**Quyền yêu cầu**: `scan:read`
+
+> FE gọi API này mỗi 3-5 giây để cập nhật trạng thái của Batch cho đến khi `status` là `completed` hoặc `failed`.
 
 **Response** `200 OK`
 ```json
 {
-  "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-  "original_filename": "bai_viet_tay.jpg",
-  "ocr_text": "Đây là nội dung text được nhận diện từ ảnh...",
-  "html_content": "<div class=\"ocr-page\"><p>Đây là nội dung text được nhận diện từ ảnh...</p></div>",
+  "batch_id": "b1234567-...",
   "status": "completed",
-  "created_at": "2026-06-01T20:30:00",
-  "updated_at": "2026-06-01T20:30:05"
+  "total_files": 3,
+  "completed_files": 3,
+  "failed_files": 0,
+  "items": [
+    {
+      "scan_id": "s1234567-...",
+      "original_filename": "anh_1.jpg",
+      "status": "completed",
+      "confidence_avg": 0.95,
+      "error_message": null
+    }
+  ]
 }
 ```
 
-**Error Responses**
-| Status | Mô tả |
-|---|---|
-| `404` | Không tìm thấy scan với ID này |
-
 ---
 
-## 4. Lấy danh sách tất cả scan
+## 2. Quản lý Danh sách & Chi tiết
 
+### 2.1 Lấy danh sách kết quả (Summary)
 ```
 GET /api/scan/
 ```
-
-**Query Parameters** (dự kiến Phase 2)
-| Param | Type | Default | Mô tả |
-|---|---|---|---|
-| `page` | int | 1 | Trang hiện tại |
-| `limit` | int | 20 | Số item mỗi trang |
-| `status` | string | - | Filter theo status |
+**Quyền yêu cầu**: `scan:read`
 
 **Response** `200 OK`
 ```json
 [
   {
-    "id": "a1b2c3d4-...",
-    "original_filename": "bai_viet_tay.jpg",
-    "ocr_text": "Đây là nội dung...",
-    "html_content": "<div>...</div>",
+    "id": "s1234567-...",
+    "batch_id": "b1234567-...",
+    "original_filename": "anh_1.jpg",
+    "document_type": "advance_payment_slip",
     "status": "completed",
-    "created_at": "2026-06-01T20:30:00",
-    "updated_at": "2026-06-01T20:30:05"
+    "created_at": "2026-06-03T02:00:00"
   }
 ]
 ```
 
 ---
 
-## 5. Cập nhật HTML content (sau khi user chỉnh sửa)
-
+### 2.2 Lấy chi tiết một Phiếu (Kèm OCR Data)
 ```
-PUT /api/scan/{scan_id}/html
+GET /api/scan/{scan_id}
+```
+**Quyền yêu cầu**: `scan:read`
+
+> Dùng để render màn hình So sánh Ảnh & Form dữ liệu.
+> - `image_path`: Đường dẫn ảnh gốc.
+> - `straightened_image_url`: (Trong `ocr_json`) Đường dẫn ảnh đã được AI nắn thẳng, có tọa độ bounding box khớp 100%.
+
+**Response** `200 OK`
+```json
+{
+  "id": "s1234567-...",
+  "batch_id": "b1234567-...",
+  "original_filename": "anh_1.jpg",
+  "image_path": "uploads/abc.jpg",
+  "status": "completed",
+  "ocr_json": {
+    "straightened_image_url": "uploads/straightened_abc.jpg",
+    "info": { ... },
+    "line_items": [ ... ]
+  },
+  "html_content": "<table>...</table>",
+  "created_at": "2026-06-03T02:00:00"
+}
+```
+
+---
+
+## 3. Chỉnh sửa Dữ liệu (Update)
+
+### 3.1 Cập nhật OCR JSON
+```
+PUT /api/scan/{scan_id}/json
 Content-Type: application/json
 ```
+**Quyền yêu cầu**: `scan:update`
 
-**Path Parameters**
-| Param | Type | Mô tả |
-|---|---|---|
-| `scan_id` | string (UUID) | ID của scan result |
+> Khi user chỉnh sửa form dữ liệu trên UI, FE sẽ gom lại và gửi toàn bộ JSON mới lên đây để ghi đè.
 
 **Request Body**
 ```json
 {
-  "html_content": "<div class=\"ocr-page\"><p>Nội dung đã chỉnh sửa...</p></div>"
+  "ocr_json": {
+    "info": { ... },
+    "line_items": [ ... ]
+  }
 }
 ```
+**Response** `200 OK` (Trả về toàn bộ object scan chi tiết sau khi cập nhật).
+
+---
+
+### 3.2 Cập nhật HTML Content
+```
+PUT /api/scan/{scan_id}/html
+Content-Type: application/json
+```
+**Quyền yêu cầu**: `scan:update`
+
+> Khi user sử dụng WYSIWYG Editor để tinh chỉnh bảng HTML.
+
+**Request Body**
+```json
+{
+  "html_content": "<table class='custom'>...</table>"
+}
+```
+**Response** `200 OK` (Trả về object scan mới).
+
+---
+
+## 4. Export & Delete
+
+### 4.1 Export ra PDF
+```
+POST /api/scan/{scan_id}/export-pdf
+```
+**Quyền yêu cầu**: `scan:read`
+
+> Render `html_content` thành file PDF (Dùng thư viện WeasyPrint trên Backend).
+
+**Response**
+- Trả về trực tiếp File Binary (`application/pdf`). FE có thể dùng trình duyệt để tải xuống hoặc mở Tab mới (`window.open`).
+
+---
+
+### 4.2 Xóa một bản Scan
+```
+DELETE /api/scan/{scan_id}
+```
+**Quyền yêu cầu**: `scan:delete`
 
 **Response** `200 OK`
 ```json
 {
-  "id": "a1b2c3d4-...",
-  "original_filename": "bai_viet_tay.jpg",
-  "ocr_text": "Text gốc OCR...",
-  "html_content": "<div class=\"ocr-page\"><p>Nội dung đã chỉnh sửa...</p></div>",
-  "status": "completed",
-  "created_at": "2026-06-01T20:30:00",
-  "updated_at": "2026-06-01T20:35:00"
+  "message": "Xóa kết quả scan thành công"
 }
 ```
 
-**Error Responses**
-| Status | Mô tả |
-|---|---|
-| `404` | Không tìm thấy scan |
-| `422` | html_content không hợp lệ |
-
 ---
 
-## 6. Export PDF
+## 5. Phụ lục: JSON Demo từ AI (PaddleOCR)
 
-```
-POST /api/scan/{scan_id}/export-pdf
-```
+Để AI Frontend hiểu rõ cấu trúc JSON trả về thực tế từ thư viện AI (giúp xây dựng UI Mapping chính xác), vui lòng xem file RAW JSON thực tế đang được lưu tại: 
+👉 [be/debug/raw_result.json](file:///d:/DDK/be/debug/raw_result.json)
 
-**Path Parameters**
-| Param | Type | Mô tả |
-|---|---|---|
-| `scan_id` | string (UUID) | ID của scan result |
+**Cấu trúc tóm tắt của raw_result.json**:
+- `result.layoutParsingResults[0].markdown`: Chứa chuỗi Markdown kết quả (bao gồm thẻ `<table>` chứa HTML table).
+- `result.layoutParsingResults[0].outputImages`: Chứa link ảnh đã bóc tách layout và bounding box (VD: `layout_det_res`).
+- `result.preprocessedImages`: Chứa mảng link ảnh gốc đã được nắn thẳng góc xoay (`straightened_image_url`).
 
-**Response** `200 OK`
-- Content-Type: `application/pdf`
-- Content-Disposition: `attachment; filename="bai_viet_tay.pdf"`
-- Body: Binary PDF file
-
-**Error Responses**
-| Status | Mô tả |
-|---|---|
-| `404` | Không tìm thấy scan hoặc chưa có HTML content |
-| `500` | Lỗi khi generate PDF |
-
----
-
-## 7. Xóa scan result
-
-```
-DELETE /api/scan/{scan_id}
-```
-
-**Path Parameters**
-| Param | Type | Mô tả |
-|---|---|---|
-| `scan_id` | string (UUID) | ID của scan result |
-
-**Response** `204 No Content`
-
-**Error Responses**
-| Status | Mô tả |
-|---|---|
-| `404` | Không tìm thấy scan |
-
----
-
-## Status Values
-
-| Status | Mô tả | Khi nào |
-|---|---|---|
-| `pending` | Đang chờ xử lý | Vừa upload xong |
-| `processing` | Đang chạy OCR | OCR engine đang nhận diện |
-| `completed` | Hoàn thành | OCR + HTML generate xong |
-| `failed` | Thất bại | OCR lỗi |
-
----
-
-## FE Integration Notes
-
-### Upload flow gợi ý cho FE:
-1. `POST /api/scan/upload` → nhận `id` + `status`
-2. Nếu status = `completed` → `GET /api/scan/{id}` lấy HTML
-3. Hiển thị HTML trong editor cho user chỉnh sửa
-4. User chỉnh xong → `PUT /api/scan/{id}/html` lưu lại
-5. User bấm Export → `POST /api/scan/{id}/export-pdf` download PDF
-
-### CORS
-- Đã enable CORS cho tất cả origins (development)
-- Production sẽ giới hạn origins
+Hệ thống Backend đã parse tự động các thông tin này và đóng gói vào trường `ocr_json` trong API `2.2` (Chi tiết phiếu scan).

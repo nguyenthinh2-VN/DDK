@@ -67,6 +67,59 @@ class OCRService:
         # Reload để có quan hệ scans đầy đủ
         return await batch_repo.find_by_id(batch.id)
 
+    # ── Xử lý đơn luồng (Single Upload) ──────────────
+
+    @staticmethod
+    async def process_single(
+        db,
+        file: tuple[str, str],
+        uploaded_by: str | None = None,
+    ) -> ScanResult:
+        """
+        Xử lý OCR cho 1 file ngay lập tức (chạy đồng bộ trong luồng request).
+        
+        Args:
+            db: AsyncSession của request.
+            file: (original_filename, image_path)
+            uploaded_by: user id từ JWT.
+            
+        Returns:
+            ScanResult đã hoàn tất.
+        """
+        scan_repo = ScanRepository(db)
+        original_filename, image_path = file
+        
+        # 1. Lưu bản ghi pending
+        scan = ScanResult(
+            original_filename=original_filename,
+            image_path=image_path,
+            document_type=settings.SCAN_DOC_TYPE_DEFAULT,
+            status="processing",
+            uploaded_by=uploaded_by,
+        )
+        await scan_repo.create(scan)
+        
+        # 2. Gọi OCR (đồng bộ)
+        try:
+            result = run_ocr(scan.image_path, scan.original_filename)
+
+            scan.ocr_text = result.get("ocr_text")
+            scan.ocr_json = result.get("ocr_json")
+            scan.ocr_raw_json = result.get("ocr_raw_json")
+            scan.confidence_avg = result.get("confidence_avg")
+            if result.get("processed_image_path"):
+                scan.processed_image_path = result.get("processed_image_path")
+            scan.html_content = result.get("html_content") or ""
+            scan.status = "completed"
+        except Exception as exc:
+            scan.status = "failed"
+            scan.error_message = str(exc)
+
+        # 3. Cập nhật và trả về
+        await scan_repo.update(scan)
+        await db.commit()
+        return scan
+
     # ── Background worker (session RIÊNG) ────────────
 
     @staticmethod

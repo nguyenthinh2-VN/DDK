@@ -20,8 +20,9 @@ from pathlib import Path
 
 import requests
 
-JOB_URL = "https://paddleocr.aistudio-app.com/api/v2/ocr/jobs"
+import base64
 
+JOB_URL = "https://paddleocr.aistudio-app.com/api/v2/ocr/jobs"
 
 class PaddleOCRVLError(RuntimeError):
     """Lỗi phát sinh khi gọi PaddleOCR-VL API."""
@@ -63,6 +64,31 @@ def submit_job(
         raise PaddleOCRVLError(f"Submit failed [{resp.status_code}]: {resp.text}")
     return resp.json()["data"]["jobId"]
 
+
+def call_sync(
+    file_path: str,
+    *,
+    token: str,
+    url: str = "https://hanaj6q2m6oc0bpa.aistudio-app.com/layout-parsing",
+    timeout: int = 60,
+) -> dict:
+    """Gọi Sync API. Trả về dict kết quả trực tiếp."""
+    headers = {"Authorization": f"token {token}"}
+    
+    with open(file_path, "rb") as f:
+        file_bytes = f.read()
+    b64_file = base64.b64encode(file_bytes).decode("utf-8")
+    
+    payload = {
+        "file": b64_file,
+        "fileType": 1
+    }
+    
+    resp = requests.post(url, json=payload, headers=headers, timeout=timeout)
+    if resp.status_code != 200:
+        raise PaddleOCRVLError(f"Sync API failed [{resp.status_code}]: {resp.text}")
+        
+    return resp.json()
 
 def poll_job(
     job_id: str,
