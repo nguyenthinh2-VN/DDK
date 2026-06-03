@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OCR Result Preview</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f7f6;
+            padding: 20px;
+        }
+        .container {
+            display: flex;
+            gap: 20px;
+            max-width: 1400px;
+            margin: auto;
+        }
+        .panel {
+            flex: 1;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            overflow-x: auto;
+        }
+        h2 {
+            color: #333;
+            text-align: center;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            table-layout: fixed;
+        }
+        th, td {
+            border: 1px solid #ddd !important;
+            padding: 12px;
+            vertical-align: top;
+            transition: background-color 0.3s, transform 0.2s;
+            position: relative;
+        }
+        td:hover {
+            background-color: #e9ecef !important;
+            cursor: pointer;
+        }
+        /* Tooltip for future image hover feature */
+        td:hover::after {
+            content: "Image crop will show here in future version";
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #333;
+            color: #fff;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            white-space: nowrap;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 10;
+        }
+        td:hover::after {
+            opacity: 0.8;
+        }
+        .img-preview {
+            max-width: 100%;
+            height: auto;
+            border: 1px solid #ccc;
+        }
+    </style>
+</head>
+<body>
+    <h2 style="text-align: center;">Kết quả PaddleOCR-VL</h2>
+    <div class="container">
+        <div class="panel">
+            <h2>Bảng HTML (Từ doc_0.md)</h2>
+            <table border=1 style='margin: auto; word-wrap: break-word;'><tr><td colspan="2">單位<br>Đơn vị: KD</td><td colspan="2">姓名<br>Họ tên: 高雄盛</td><td colspan="2">卡號<br>Số thẻ: 1789900</td><td colspan="2">主管<br>Chủ quản:</td></tr><tr><td style='text-align: center; word-wrap: break-word;'>序號<br>STT</td><td style='text-align: center; word-wrap: break-word;'>項目<br>Hạng mục</td><td style='text-align: center; word-wrap: break-word;'>用途說明<br>Mục đích sử dụng</td><td style='text-align: center; word-wrap: break-word;'>數量單價<br>Số lượng x Don giá</td><td style='text-align: center; word-wrap: break-word;'>金額<br>Số tiền</td><td colspan="3">單據號碼<br>Số chứng từ</td></tr><tr><td style='text-align: center; word-wrap: break-word;'></td><td style='text-align: center; word-wrap: break-word;'>水务</td><td style='text-align: center; word-wrap: break-word;'>5/27 不正家，所以會使日求合求喝。</td><td style='text-align: center; word-wrap: break-word;'>9,700,000</td><td style='text-align: center; word-wrap: break-word;'>9,700,000</td><td colspan="3"></td></tr><tr><td colspan="2">預支金額<br>Số tiền tạm ứng</td><td style='text-align: center; word-wrap: break-word;'>1,700,000</td><td style='text-align: center; word-wrap: break-word;'>簽收<br>Ký nhận</td><td style='text-align: center; word-wrap: break-word;'></td><td style='text-align: center; word-wrap: break-word;'>實支<br>Thực chi</td><td style='text-align: center; word-wrap: break-word;'></td><td style='text-align: center; word-wrap: break-word;'>[ ] 補 Bỏ sung<br>[ ] 退 Trả lại</td></tr><tr><td colspan="2">總經理<br>Tổng Giám Đốc</td><td style='text-align: center; word-wrap: break-word;'></td><td style='text-align: center; word-wrap: break-word;'>出納<br>Thủ quỹ</td><td style='text-align: center; word-wrap: break-word;'></td><td style='text-align: center; word-wrap: break-word;'>會計<br>Kế toán</td><td style='text-align: center; word-wrap: break-word;'></td><td style='text-align: center; word-wrap: break-word;'>出納<br>Thủ quỹ</td></tr></table>
+        </div>
+        <div class="panel">
+            <h2>Ảnh Gốc</h2>
+            <img src="../uploads/0a61179cfa1b48549d97879b778536b6.jpg" alt="Original Image" class="img-preview">
+            <p style="color: #666; font-size: 14px; margin-top: 10px;">
+                <i>*Tính năng hover hiện ảnh crop từng ô sẽ được tích hợp ở bước sau khi có tọa độ (bounding box) cụ thể cho từng cell.</i>
+            </p>
+        </div>
+    </div>
+</body>
+</html>

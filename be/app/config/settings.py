@@ -48,6 +48,17 @@ class Settings(BaseSettings):
     MAX_FILE_SIZE_MB: int = 10
     ALLOWED_EXTENSIONS: str = ".jpg,.jpeg,.png,.bmp,.tiff,.pdf"
 
+    # ── Scan / OCR ───────────────────────────────────
+    SCAN_BATCH_MIN_FILES: int = 1
+    SCAN_BATCH_MAX_FILES: int = 5
+    SCAN_DOC_TYPE_DEFAULT: str = "advance_payment_slip"
+
+    # ── OCR (PaddleOCR-VL API) ───────────────────────
+    OCR_ENABLED: bool = False                 # False = mock; True = gọi PaddleOCR-VL API
+    OCR_PREPROCESS_ENABLED: bool = False      # bật/tắt OpenCV preprocess trước khi gửi API
+    PADDLEOCR_VL_TOKEN: str = ""              # Token aistudio (bắt buộc khi OCR_ENABLED=true)
+    PADDLEOCR_VL_MODEL: str = "PaddleOCR-VL-1.6"
+
     @property
     def allowed_extensions_list(self) -> list[str]:
         """Trả về danh sách extension được phép upload."""

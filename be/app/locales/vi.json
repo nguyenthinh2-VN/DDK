@@ -29,5 +29,18 @@
     "permission_assigned": "Gán quyền thành công",
     "permission_removed": "Bỏ quyền thành công",
     "permission_not_found": "Không tìm thấy quyền"
+  },
+  "scan": {
+    "not_found": "Không tìm thấy kết quả scan",
+    "batch_not_found": "Không tìm thấy batch scan",
+    "file_invalid_ext": "File không hợp lệ. Chỉ chấp nhận: .jpg, .jpeg, .png, .bmp, .tiff, .pdf",
+    "file_too_large": "File vượt quá dung lượng cho phép",
+    "batch_too_few": "Cần tải lên tối thiểu {min} file",
+    "batch_too_many": "Chỉ được tải lên tối đa {max} file",
+    "batch_received": "Đã nhận {count} file, đang xử lý OCR",
+    "html_updated": "Cập nhật HTML thành công",
+    "json_updated": "Cập nhật dữ liệu thành công",
+    "no_html": "Phiếu chưa có nội dung HTML để xuất PDF",
+    "deleted": "Xóa kết quả scan thành công"
   }
 }

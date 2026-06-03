@@ -29,5 +29,18 @@
     "permission_assigned": "權限指派成功",
     "permission_removed": "權限移除成功",
     "permission_not_found": "未找到權限"
+  },
+  "scan": {
+    "not_found": "未找到掃描結果",
+    "batch_not_found": "未找到掃描批次",
+    "file_invalid_ext": "檔案無效。僅接受：.jpg、.jpeg、.png、.bmp、.tiff、.pdf",
+    "file_too_large": "檔案超過允許的大小",
+    "batch_too_few": "至少需上傳 {min} 個檔案",
+    "batch_too_many": "最多只能上傳 {max} 個檔案",
+    "batch_received": "已接收 {count} 個檔案，正在進行 OCR 處理",
+    "html_updated": "HTML 更新成功",
+    "json_updated": "資料更新成功",
+    "no_html": "此單據尚無 HTML 內容可匯出 PDF",
+    "deleted": "掃描結果刪除成功"
   }
 }

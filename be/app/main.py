@@ -19,7 +19,7 @@ from app.config.settings import settings
 from app.database.base import Base
 from app.database.connection import engine
 # Import models để SQLAlchemy đăng ký bảng với Base.metadata
-from app.models import scan_result, user, role, permission, role_permission  # noqa: F401
+from app.models import scan_batch, scan_result, user, role, permission, role_permission  # noqa: F401
 from app.api import scan, auth
 from app.api.admin import users as admin_users
 from app.api.admin import roles as admin_roles

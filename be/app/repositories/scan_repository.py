@@ -42,6 +42,16 @@ class ScanRepository:
         result = await self.db.execute(stmt)
         return list(result.scalars().all())
 
+    async def find_by_batch_id(self, batch_id: str) -> list[ScanResult]:
+        """Lấy tất cả ScanResult thuộc 1 batch, theo thứ tự tạo."""
+        stmt = (
+            select(ScanResult)
+            .where(ScanResult.batch_id == batch_id)
+            .order_by(ScanResult.created_at.asc())
+        )
+        result = await self.db.execute(stmt)
+        return list(result.scalars().all())
+
     async def update(self, scan_result: ScanResult) -> ScanResult:
         """Cập nhật ScanResult (đã được modify trước khi gọi hàm này)."""
         await self.db.flush()

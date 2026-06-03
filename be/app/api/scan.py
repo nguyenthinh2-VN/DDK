@@ -1,160 +1,284 @@
 """
-Scan API Router (Controller) - Định nghĩa các API endpoints cho chức năng scan.
+Scan API Router (Controller) - Endpoints cho chức năng scan OCR.
 
 Tương đương: @RestController trong Spring.
 
-Tầng Controller: 
-- Nhận HTTP request
-- Validate input (thông qua Schema/DTO)
-- Gọi Service để xử lý
-- Trả HTTP response
+Tầng Controller: nhận HTTP request, validate input, gọi Service, trả response.
+KHÔNG chứa business logic.
 
-KHÔNG chứa business logic - chỉ điều phối request/response.
+Cập nhật v2:
+- POST /api/scan/batch        : upload 3-5 file, xử lý OCR bất đồng bộ (HTTP 202)
+- GET  /api/scan/batch/{id}   : polling tiến độ batch
+- GET  /api/scan/{id}         : chi tiết 1 phiếu
+- GET  /api/scan/             : danh sách
+- PUT  /api/scan/{id}/html    : lưu HTML chỉnh sửa
+- PUT  /api/scan/{id}/json    : lưu ocr_json chỉnh sửa
+- DELETE /api/scan/{id}       : xóa
 """
 
-from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, status
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    File,
+    HTTPException,
+    UploadFile,
+    status,
+)
+from fastapi.responses import FileResponse
+from pathlib import Path
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config.settings import settings
 from app.database.connection import get_db
+from app.models.user import User
+from app.schemas.auth_schema import MessageResponse
 from app.schemas.scan_schema import (
-    ScanUploadResponse,
+    BatchUploadResponse,
+    BatchItemResponse,
+    BatchStatusResponse,
+    BatchItemStatusResponse,
     ScanResultResponse,
+    ScanResultSummary,
     HTMLUpdateRequest,
-    ExportPDFResponse,
+    OCRJsonUpdateRequest,
 )
 from app.services.ocr_service import OCRService
-from app.utils.image_helper import validate_file_extension, save_upload_file
+from app.utils.auth_guard import require_permission
+from app.utils.i18n import get_message
+from app.utils.image_helper import (
+    validate_file_extension,
+    validate_file_size,
+    save_upload_file,
+)
+from app.utils.response_helper import get_language, LocalizedHTTPException
 
-# Tương đương @RequestMapping("/api/scan") trong Spring
 router = APIRouter(prefix="/api/scan", tags=["Scan OCR"])
 
 
 @router.post(
-    "/upload",
-    response_model=ScanUploadResponse,
-    status_code=status.HTTP_201_CREATED,
-    summary="Upload ảnh để scan OCR",
+    "/batch",
+    response_model=BatchUploadResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="Upload 3-5 ảnh phiếu để scan OCR (bất đồng bộ)",
 )
-async def upload_image(
-    file: UploadFile = File(..., description="File ảnh chữ viết tay"),
+async def upload_batch(
+    background_tasks: BackgroundTasks,
+    files: list[UploadFile] = File(..., description="Danh sách 3-5 file ảnh phiếu"),
+    lang: str = Depends(get_language),
+    current_user: User = Depends(require_permission("scan:upload")),
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Upload ảnh chữ viết tay để scan OCR.
+    Upload nhiều file (min 3, max 5) → tạo batch + scan (pending) → xử lý nền.
 
-    Tương đương: @PostMapping("/upload") trong Spring.
+    Trả về NGAY batch_id + danh sách scan_id (HTTP 202). FE polling tiến độ.
     """
-    # Validate file extension
-    if not validate_file_extension(file.filename):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"File không hợp lệ. Chỉ chấp nhận: .jpg, .jpeg, .png, .bmp, .tiff, .pdf",
+    # Validate số lượng file
+    if len(files) < settings.SCAN_BATCH_MIN_FILES:
+        raise LocalizedHTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "scan.batch_too_few",
+            lang,
+        )
+    if len(files) > settings.SCAN_BATCH_MAX_FILES:
+        raise LocalizedHTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "scan.batch_too_many",
+            lang,
         )
 
-    # Lưu file
-    file_content = await file.read()
-    image_path = await save_upload_file(file_content, file.filename)
+    # Validate + lưu từng file
+    saved_files: list[tuple[str, str]] = []
+    for file in files:
+        if not validate_file_extension(file.filename):
+            raise LocalizedHTTPException(
+                status.HTTP_400_BAD_REQUEST, "scan.file_invalid_ext", lang
+            )
+        content = await file.read()
+        if not validate_file_size(content):
+            raise LocalizedHTTPException(
+                status.HTTP_400_BAD_REQUEST, "scan.file_too_large", lang
+            )
+        image_path = await save_upload_file(content, file.filename)
+        saved_files.append((file.filename, image_path))
 
-    # Gọi service xử lý
-    service = OCRService(db)
-    result = await service.upload_and_scan(file.filename, image_path)
+    # Tạo batch + scans (pending) trong session request
+    batch = await OCRService.create_batch(db, saved_files, uploaded_by=current_user.id)
 
-    return ScanUploadResponse(
-        id=result.id,
-        original_filename=result.original_filename,
-        status=result.status,
+    # Kick xử lý OCR nền (session riêng, sau khi response trả về)
+    background_tasks.add_task(OCRService.process_batch, batch.id)
+
+    message = get_message("scan.batch_received", lang).format(count=len(saved_files))
+    return BatchUploadResponse(
+        batch_id=batch.id,
+        total_files=batch.total_files,
+        status=batch.status,
+        items=[
+            BatchItemResponse(
+                scan_id=s.id,
+                original_filename=s.original_filename,
+                status=s.status,
+            )
+            for s in batch.scans
+        ],
+        message=message,
     )
+
+
+@router.get(
+    "/batch/{batch_id}",
+    response_model=BatchStatusResponse,
+    summary="Polling tiến độ xử lý batch",
+)
+async def get_batch_status(
+    batch_id: str,
+    lang: str = Depends(get_language),
+    current_user: User = Depends(require_permission("scan:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Lấy tiến độ batch + trạng thái/kết quả từng file."""
+    batch = await OCRService.get_batch(db, batch_id)
+    if batch is None:
+        raise LocalizedHTTPException(
+            status.HTTP_404_NOT_FOUND, "scan.batch_not_found", lang
+        )
+
+    return BatchStatusResponse(
+        batch_id=batch.id,
+        status=batch.status,
+        total_files=batch.total_files,
+        completed_files=batch.completed_files,
+        failed_files=batch.failed_files,
+        items=[
+            BatchItemStatusResponse(
+                scan_id=s.id,
+                original_filename=s.original_filename,
+                status=s.status,
+                confidence_avg=s.confidence_avg,
+                error_message=s.error_message,
+            )
+            for s in batch.scans
+        ],
+    )
+
+
+@router.get(
+    "/",
+    response_model=list[ScanResultSummary],
+    summary="Danh sách kết quả scan",
+)
+async def list_scans(
+    current_user: User = Depends(require_permission("scan:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Lấy danh sách tất cả phiếu scan (tóm tắt)."""
+    return await OCRService.get_all_results(db)
 
 
 @router.get(
     "/{scan_id}",
     response_model=ScanResultResponse,
-    summary="Lấy kết quả scan theo ID",
+    summary="Chi tiết 1 phiếu scan",
 )
-async def get_scan_result(
+async def get_scan(
     scan_id: str,
+    lang: str = Depends(get_language),
+    current_user: User = Depends(require_permission("scan:read")),
     db: AsyncSession = Depends(get_db),
 ):
-    """
-    Lấy kết quả scan OCR theo ID.
-
-    Tương đương: @GetMapping("/{id}") trong Spring.
-    """
-    service = OCRService(db)
-    result = await service.get_scan_result(scan_id)
-
-    if result is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Không tìm thấy kết quả scan với ID: {scan_id}",
-        )
-
-    return result
-
-
-@router.get(
-    "/",
-    response_model=list[ScanResultResponse],
-    summary="Lấy tất cả kết quả scan",
-)
-async def get_all_results(
-    db: AsyncSession = Depends(get_db),
-):
-    """
-    Lấy danh sách tất cả kết quả scan.
-
-    Tương đương: @GetMapping("/") trong Spring.
-    """
-    service = OCRService(db)
-    return await service.get_all_results()
+    """Lấy chi tiết 1 phiếu: ocr_json + html_content + ảnh."""
+    scan = await OCRService.get_scan_result(db, scan_id)
+    if scan is None:
+        raise LocalizedHTTPException(status.HTTP_404_NOT_FOUND, "scan.not_found", lang)
+    return scan
 
 
 @router.put(
     "/{scan_id}/html",
     response_model=ScanResultResponse,
-    summary="Cập nhật nội dung HTML",
+    summary="Lưu HTML đã chỉnh sửa",
 )
 async def update_html(
     scan_id: str,
     body: HTMLUpdateRequest,
+    lang: str = Depends(get_language),
+    current_user: User = Depends(require_permission("scan:update")),
     db: AsyncSession = Depends(get_db),
 ):
-    """
-    Cập nhật nội dung HTML sau khi user chỉnh sửa trên editor.
+    """Cập nhật HTML content sau khi user chỉnh sửa trên editor."""
+    scan = await OCRService.update_html_content(db, scan_id, body.html_content)
+    if scan is None:
+        raise LocalizedHTTPException(status.HTTP_404_NOT_FOUND, "scan.not_found", lang)
+    return scan
 
-    Tương đương: @PutMapping("/{id}/html") trong Spring.
-    """
-    service = OCRService(db)
-    result = await service.update_html_content(scan_id, body.html_content)
 
-    if result is None:
+@router.put(
+    "/{scan_id}/json",
+    response_model=ScanResultResponse,
+    summary="Lưu ocr_json đã chỉnh sửa",
+)
+async def update_json(
+    scan_id: str,
+    body: OCRJsonUpdateRequest,
+    lang: str = Depends(get_language),
+    current_user: User = Depends(require_permission("scan:update")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Cập nhật lại các field trong ocr_json sau khi user sửa."""
+    scan = await OCRService.update_ocr_json(db, scan_id, body.ocr_json)
+    if scan is None:
+        raise LocalizedHTTPException(status.HTTP_404_NOT_FOUND, "scan.not_found", lang)
+    return scan
+
+
+@router.post(
+    "/{scan_id}/export-pdf",
+    summary="Export phiếu scan ra PDF",
+)
+async def export_pdf(
+    scan_id: str,
+    lang: str = Depends(get_language),
+    current_user: User = Depends(require_permission("scan:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Render html_content của phiếu thành PDF và trả file về."""
+    pdf_path, error_key = await OCRService.export_pdf(db, scan_id)
+    if error_key is not None:
+        # not_found / no_html → lỗi nghiệp vụ; còn lại là lỗi render WeasyPrint
+        if error_key in ("scan.not_found", "scan.no_html"):
+            code = (
+                status.HTTP_404_NOT_FOUND
+                if error_key == "scan.not_found"
+                else status.HTTP_400_BAD_REQUEST
+            )
+            raise LocalizedHTTPException(code, error_key, lang)
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Không tìm thấy kết quả scan với ID: {scan_id}",
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=error_key
         )
 
-    return result
+    filename = f"{Path(pdf_path).name}"
+    return FileResponse(
+        pdf_path,
+        media_type="application/pdf",
+        filename=filename,
+    )
 
 
 @router.delete(
     "/{scan_id}",
-    status_code=status.HTTP_204_NO_CONTENT,
+    response_model=MessageResponse,
     summary="Xóa kết quả scan",
 )
 async def delete_scan(
     scan_id: str,
+    lang: str = Depends(get_language),
+    current_user: User = Depends(require_permission("scan:delete")),
     db: AsyncSession = Depends(get_db),
 ):
-    """
-    Xóa kết quả scan theo ID.
-
-    Tương đương: @DeleteMapping("/{id}") trong Spring.
-    """
-    service = OCRService(db)
-    deleted = await service.delete_scan(scan_id)
-
+    """Xóa 1 phiếu scan theo ID."""
+    deleted = await OCRService.delete_scan(db, scan_id)
     if not deleted:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Không tìm thấy kết quả scan với ID: {scan_id}",
-        )
+        raise LocalizedHTTPException(status.HTTP_404_NOT_FOUND, "scan.not_found", lang)
+    return MessageResponse(message=get_message("scan.deleted", lang))

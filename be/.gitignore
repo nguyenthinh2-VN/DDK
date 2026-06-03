@@ -24,3 +24,6 @@ uploads/*
 .idea/
 *.swp
 *.swo
+
+# OCR debug output
+debug/

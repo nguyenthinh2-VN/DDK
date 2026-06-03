@@ -1,45 +1,121 @@
 """
-Scan Schemas (DTO) - Request/Response models cho API.
+Scan Schemas (DTO) - Request/Response models cho API scan OCR.
+
+Tương đương: DTO (Data Transfer Object) trong Spring.
+
+Tầng DTO: định nghĩa dữ liệu truyền qua API, KHÔNG phải entity database.
+Cập nhật v2: thêm batch DTO, structured JSON DTO, per-field confidence.
 """
 
 from datetime import datetime
+from typing import Any
 
 from pydantic import BaseModel, Field
 
 
-# ── Request DTOs ─────────────────────────────────────
+# ── Batch Upload Response ────────────────────────────
 
 
-class ScanUploadResponse(BaseModel):
-    """Response sau khi upload ảnh để scan."""
+class BatchItemResponse(BaseModel):
+    """1 file trong batch (response khi upload)."""
 
-    id: str = Field(..., description="ID của scan result")
-    original_filename: str = Field(..., description="Tên file gốc")
-    status: str = Field(..., description="Trạng thái xử lý")
-    message: str = Field(default="Upload thành công, đang xử lý OCR")
+    scan_id: str
+    original_filename: str
+    status: str
 
 
-# ── Response DTOs ────────────────────────────────────
+class BatchUploadResponse(BaseModel):
+    """Response sau khi upload batch nhiều file (HTTP 202)."""
+
+    batch_id: str
+    total_files: int
+    status: str
+    items: list[BatchItemResponse]
+    message: str = Field(default="Đã nhận file, đang xử lý OCR")
+
+
+# ── Batch Polling Response ───────────────────────────
+
+
+class BatchItemStatusResponse(BaseModel):
+    """Trạng thái 1 file khi polling tiến độ batch."""
+
+    scan_id: str
+    original_filename: str
+    status: str
+    confidence_avg: float | None = None
+    error_message: str | None = None
+
+    model_config = {"from_attributes": True}
+
+
+class BatchStatusResponse(BaseModel):
+    """Response polling tiến độ xử lý batch."""
+
+    batch_id: str
+    status: str
+    total_files: int
+    completed_files: int
+    failed_files: int
+    items: list[BatchItemStatusResponse]
+
+    model_config = {"from_attributes": True}
+
+
+# ── Scan Result Response ─────────────────────────────
 
 
 class ScanResultResponse(BaseModel):
-    """Response trả về kết quả scan OCR."""
+    """Response chi tiết 1 phiếu scan."""
 
     id: str
+    batch_id: str | None = None
     original_filename: str
+    image_path: str
+    processed_image_path: str | None = None
+    document_type: str | None = None
     ocr_text: str | None = None
+    ocr_json: dict[str, Any] | None = None
     html_content: str | None = None
+    confidence_avg: float | None = None
     status: str
+    error_message: str | None = None
     created_at: datetime
     updated_at: datetime
 
     model_config = {"from_attributes": True}
 
 
+class ScanResultSummary(BaseModel):
+    """Bản tóm tắt phiếu scan (cho danh sách)."""
+
+    id: str
+    batch_id: str | None = None
+    original_filename: str
+    document_type: str | None = None
+    confidence_avg: float | None = None
+    status: str
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+# ── Update Requests ──────────────────────────────────
+
+
 class HTMLUpdateRequest(BaseModel):
     """Request body khi user chỉnh sửa HTML content."""
 
     html_content: str = Field(..., description="Nội dung HTML đã chỉnh sửa")
+
+
+class OCRJsonUpdateRequest(BaseModel):
+    """Request body khi user chỉnh sửa lại các field trong ocr_json."""
+
+    ocr_json: dict[str, Any] = Field(..., description="JSON structured đã chỉnh sửa")
+
+
+# ── Export PDF ───────────────────────────────────────
 
 
 class ExportPDFResponse(BaseModel):

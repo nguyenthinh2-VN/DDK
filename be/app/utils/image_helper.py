@@ -26,6 +26,11 @@ def validate_file_extension(filename: str) -> bool:
     return ext in settings.allowed_extensions_list
 
 
+def validate_file_size(file_content: bytes) -> bool:
+    """Kiểm tra dung lượng file không vượt quá giới hạn cấu hình."""
+    return len(file_content) <= settings.max_file_size_bytes
+
+
 def get_upload_path(filename: str) -> str:
     """Trả về đường dẫn đầy đủ để lưu file upload."""
     upload_dir = Path(settings.UPLOAD_DIR)
