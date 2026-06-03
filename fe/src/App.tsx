@@ -3,6 +3,9 @@ import { AuthProvider } from './contexts/AuthContext';
 import Login from './pages/Login/Login';
 import DashboardLayout from './layouts/DashboardLayout';
 import Dashboard from './pages/Dashboard/Dashboard';
+import ScanViewer from './pages/ScanViewer/ScanViewer';
+import Scans from './pages/Scans/Scans';
+import Upload from './pages/Upload/Upload';
 
 function App() {
   return (
@@ -10,11 +13,13 @@ function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<Login />} />
-          
+
           {/* Private routes inside DashboardLayout */}
           <Route path="/" element={<DashboardLayout />}>
             <Route index element={<Dashboard />} />
-            {/* Future routes will go here, e.g. /scans, /upload */}
+            <Route path="/scan/:id" element={<ScanViewer />} />
+            <Route path="/scans" element={<Scans />} />
+            <Route path="/upload" element={<Upload />} />
           </Route>
         </Routes>
       </BrowserRouter>

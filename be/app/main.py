@@ -20,7 +20,7 @@ from app.database.base import Base
 from app.database.connection import engine
 # Import models để SQLAlchemy đăng ký bảng với Base.metadata
 from app.models import scan_batch, scan_result, user, role, permission, role_permission  # noqa: F401
-from app.api import scan, auth
+from app.api import scan, auth, stats
 from app.api.admin import users as admin_users
 from app.api.admin import roles as admin_roles
 
@@ -56,6 +56,13 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+import os
+from fastapi.staticfiles import StaticFiles
+
+# Mount uploads directory for static files
+os.makedirs("uploads", exist_ok=True)
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+
 
 # ── CORS Middleware ──────────────────────────────────
 
@@ -74,6 +81,7 @@ app.include_router(scan.router)
 app.include_router(auth.router)
 app.include_router(admin_users.router)
 app.include_router(admin_roles.router)
+app.include_router(stats.router)
 
 
 # ── Root Endpoint ────────────────────────────────────

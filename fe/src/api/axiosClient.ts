@@ -33,9 +33,12 @@ axiosClient.interceptors.response.use(
   },
   (error) => {
     if (error.response && error.response.status === 401) {
-      // Token hết hạn hoặc không hợp lệ -> Xoá token và redirect về login
-      localStorage.removeItem("access_token");
-      window.location.href = "/login";
+      const originalRequest = error.config;
+      // Không chuyển hướng nếu lỗi 401 xuất phát từ API login (sai tài khoản/mật khẩu)
+      if (originalRequest.url && !originalRequest.url.includes("/api/auth/login")) {
+        localStorage.removeItem("access_token");
+        window.location.href = "/login";
+      }
     }
     return Promise.reject(error);
   }

@@ -46,7 +46,7 @@ def _extract_table_html(markdown_text: str) -> str:
     return ""
 
 
-def _extract_fields_from_markdown(markdown_text: str) -> dict:
+def _extract_fields_from_markdown(markdown_text: str, layout_boxes: list = None, parsing_res_list: list = None) -> dict:
     """
     Trích xuất các field phiếu tạm ứng từ markdown text của PaddleOCR-VL.
 
@@ -59,6 +59,33 @@ def _extract_fields_from_markdown(markdown_text: str) -> dict:
     # form_no: tìm dãy 6 chữ số
     m = re.search(r"\b(\d{6})\b", markdown_text)
     result["form_no"] = m.group(1) if m else ""
+
+    # Parse bbox từ layout_det_res (chỉ có label/coord/score)
+    if layout_boxes:
+        for box in layout_boxes:
+            label = str(box.get("label", "")).lower()
+            if label == "table":
+                result["table_bbox"] = box.get("coordinate")
+                result["table_score"] = box.get("score")
+
+    # Parse bbox từ parsing_res_list (có block_content → match chính xác hơn)
+    form_no_val = result.get("form_no", "")
+    if parsing_res_list:
+        for block in parsing_res_list:
+            content = str(block.get("block_content", ""))
+            label = str(block.get("block_label", "")).lower()
+            bbox = block.get("block_bbox")  # [x_min, y_min, x_max, y_max]
+            if not bbox:
+                continue
+            # form_no bbox: block text chứa 6 chữ số đó
+            if form_no_val and form_no_val in content and "form_no_bbox" not in result:
+                result["form_no_bbox"] = bbox
+            # ngay bbox: block text chứa 日期
+            if ("日期" in content) and "ngay_bbox" not in result:
+                result["ngay_bbox"] = bbox
+            # info/table bbox ưu tiên từ table block
+            if label == "table" and "table_bbox" not in result:
+                result["table_bbox"] = bbox
 
     # Ngày
     m = re.search(r"日期[：:\s]*(.+?)(?:\n|$)", markdown_text)
@@ -74,47 +101,73 @@ def _extract_fields_from_markdown(markdown_text: str) -> dict:
 
     table_content = table_match.group(1)
     # Lấy tất cả hàng
-    rows = re.findall(r"<tr>(.*?)</tr>", table_content, re.DOTALL | re.IGNORECASE)
+    rows = re.findall(r"<tr[^>]*>(.*?)</tr>", table_content, re.DOTALL | re.IGNORECASE)
 
-    # Hàng đầu: info (單位, 姓名, 卡號, 主管)
+    # Hàng đầu: info (單位, 姓名, 卡號, 主管) - label và value nằm ở 2 ô riêng nhau
     info = {}
     if rows:
-        cells = re.findall(r"<td[^>]*>(.*?)</td>", rows[0], re.DOTALL | re.IGNORECASE)
-        for cell in cells:
-            cell_text = re.sub(r"<[^>]+>", "\n", cell).strip()
-            lines = [l.strip() for l in cell_text.split("\n") if l.strip()]
-            if any("單位" in l or "Đơn vị" in l for l in lines):
-                val = re.sub(r"(?:單位|Đơn vị|Don vi)[：:]*\s*", "", " ".join(lines), flags=re.IGNORECASE).strip()
-                info["don_vi"] = val
-            elif any("姓名" in l or "Họ tên" in l for l in lines):
-                val = re.sub(r"(?:姓名|Họ tên|Ho ten)[：:]*\s*", "", " ".join(lines), flags=re.IGNORECASE).strip()
-                info["ho_ten"] = val
-            elif any("卡號" in l or "Số thẻ" in l for l in lines):
-                val = re.sub(r"(?:卡號|Số thẻ|So the)[：:]*\s*", "", " ".join(lines), flags=re.IGNORECASE).strip()
+        cells_raw = re.findall(r"<td[^>]*>(.*?)</td>", rows[0], re.DOTALL | re.IGNORECASE)
+        cells = [re.sub(r"<[^>]+>", "", c).strip() for c in cells_raw]
+
+        # Tìm vị trí của từng label rồi lấy ô tiếp theo làm value
+        for i, cell in enumerate(cells):
+            if any(k in cell for k in ["單位", "Đơn vị", "Don vi"]):
+                # value ở ô kế tiếp
+                val_cells = []
+                j = i + 1
+                while j < len(cells) and not any(k in cells[j] for k in ["姓名", "Họ tên", "卡號", "主管"]):
+                    if cells[j]:
+                        val_cells.append(cells[j])
+                    j += 1
+                info["don_vi"] = " ".join(val_cells).strip()
+            elif any(k in cell for k in ["姓名", "Họ tên", "Ho ten"]):
+                val_cells = []
+                j = i + 1
+                while j < len(cells) and not any(k in cells[j] for k in ["卡號", "Số thẻ", "主管"]):
+                    if cells[j]:
+                        val_cells.append(cells[j])
+                    j += 1
+                info["ho_ten"] = " ".join(val_cells).strip()
+            elif any(k in cell for k in ["卡號", "Số thẻ", "So the"]):
+                # value ở ô kế tiếp (bỏ qua nếu chứa label)
+                j = i + 1
+                val = cells[j] if j < len(cells) else ""
+                val = re.sub(r"(?:卡號|Số thẻ|So the)[：:]*\s*", "", val, flags=re.IGNORECASE).strip()
                 info["so_the"] = val
-            elif any("主管" in l or "Chủ quản" in l for l in lines):
-                val = re.sub(r"(?:主管|Chủ quản|Chu quan)[：:]*\s*", "", " ".join(lines), flags=re.IGNORECASE).strip()
+            elif any(k in cell for k in ["主管", "Chủ quản", "Chu quan"]):
+                # value ở ô kế tiếp hoặc trong cùng ô sau label
+                val = re.sub(r"(?:主管|Chủ quản|Chu quan)[：:]*\s*", "", cell, flags=re.IGNORECASE).strip()
+                if not val and i + 1 < len(cells):
+                    val = cells[i + 1]
                 info["chu_quan"] = val
+
     result["info"] = info
 
-    # Line items (bỏ qua hàng header và hàng cuối footer)
+    # Từ khóa nhận biết hàng header của bảng (để bỏ qua)
+    HEADER_KEYWORDS = ["序號", "項目", "用途說明", "數量單價", "單據號碼", "Hạng mục", "Mục đích", "Số lượng", "Số chứng"]
+
+    # Line items (bỏ qua hàng info [0] + hàng header [1], dùng HEADER_KEYWORDS làm guard thêm)
     line_items = []
     for row in rows[2:]:  # skip info row + header row
-        cells = re.findall(r"<td[^>]*>(.*?)</td>", row, re.DOTALL | re.IGNORECASE)
-        if not cells:
+        cells_raw = re.findall(r"<td[^>]*>(.*?)</td>", row, re.DOTALL | re.IGNORECASE)
+        if not cells_raw:
             continue
-        cell_texts = [re.sub(r"<[^>]+>", " ", c).strip() for c in cells]
-        # Kiểm tra có phải dòng footer (預支金額 / 總經理)
+        cell_texts = [re.sub(r"<[^>]+>", " ", c).strip() for c in cells_raw]
         combined = " ".join(cell_texts)
+        # Kiểm tra có phải dòng footer
         if "預支金額" in combined or "總經理" in combined or "Tổng Giám Đốc" in combined:
-            # Footer: lấy số tiền tạm ứng
             for ct in cell_texts:
                 clean = re.sub(r"[^0-9.,]", "", ct)
                 if clean and len(clean) >= 3:
                     result["footer"] = {"so_tien_tam_ung": clean}
                     break
             continue
-        # Line item bình thường
+        # Bỏ qua hàng header lọt vào
+        if any(kw in combined for kw in HEADER_KEYWORDS):
+            continue
+        non_empty = [t for t in cell_texts if t]
+        if len(non_empty) < 2:
+            continue
         if len(cell_texts) >= 5:
             item = {
                 "hang_muc": cell_texts[1] if len(cell_texts) > 1 else "",
@@ -123,7 +176,6 @@ def _extract_fields_from_markdown(markdown_text: str) -> dict:
                 "so_tien": cell_texts[4] if len(cell_texts) > 4 else "",
                 "so_chung_tu": cell_texts[5] if len(cell_texts) > 5 else "",
             }
-            # Chỉ thêm nếu có ít nhất 1 giá trị
             if any(v for v in item.values()):
                 line_items.append(item)
 
@@ -238,6 +290,7 @@ def run_ocr(image_path: str, original_filename: str) -> dict:
     markdown_text = ""
     bbox_image_url = ""
     straightened_image_url = ""
+    layout_boxes = []
     if results:
         page_result = results[0].get("result", {})
         
@@ -253,10 +306,35 @@ def run_ocr(image_path: str, original_filename: str) -> dict:
                 if "layout" in img_name.lower() or "res" in img_name.lower():
                     bbox_image_url = img_url
                     break
+            # Extract boxes from layout_det_res
+            layout_det = layout.get("layout_det_res")
+            if isinstance(layout_det, dict) and "boxes" in layout_det:
+                layout_boxes = layout_det["boxes"]
+            elif isinstance(layout_det, list):
+                layout_boxes = layout_det
+            # Extract parsing_res_list for content-based bbox matching
+            pruned = layout.get("prunedResult") or {}
+            parsing_res_list = pruned.get("parsing_res_list", [])
             break
 
+    import requests
+    import uuid
+    
+    # Download bbox image
+    if bbox_image_url and bbox_image_url.startswith("http"):
+        try:
+            r = requests.get(bbox_image_url, timeout=30)
+            if r.status_code == 200:
+                img_name = f"bbox_{uuid.uuid4().hex[:8]}.jpg"
+                img_path = Path(settings.UPLOAD_DIR) / img_name
+                img_path.parent.mkdir(parents=True, exist_ok=True)
+                img_path.write_bytes(r.content)
+                bbox_image_url = f"/uploads/{img_name}"
+        except Exception:
+            pass
+
     table_html = _extract_table_html(markdown_text)
-    ocr_json = _extract_fields_from_markdown(markdown_text)
+    ocr_json = _extract_fields_from_markdown(markdown_text, layout_boxes, parsing_res_list)
     
     if bbox_image_url:
         ocr_json["bbox_image_url"] = bbox_image_url

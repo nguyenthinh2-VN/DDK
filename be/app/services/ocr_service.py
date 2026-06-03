@@ -95,7 +95,6 @@ class OCRService:
             image_path=image_path,
             document_type=settings.SCAN_DOC_TYPE_DEFAULT,
             status="processing",
-            uploaded_by=uploaded_by,
         )
         await scan_repo.create(scan)
         

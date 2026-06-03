@@ -15,16 +15,13 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { FileScan, Upload, LayoutDashboard, LogOut } from "lucide-react";
-
-const menuItems = [
-  { title: "Dashboard", url: "/", icon: LayoutDashboard },
-  { title: "Danh sách phiếu (Scan)", url: "/scans", icon: FileScan },
-  { title: "Upload", url: "/upload", icon: Upload },
-];
+import { FileScan, Upload, LayoutDashboard, LogOut, Globe } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useTranslation } from "../hooks/useTranslation";
 
 export default function DashboardLayout() {
   const { isAuthenticated, loading, logout, user } = useAuth();
+  const { t, lang } = useTranslation();
 
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center">Đang tải...</div>;
@@ -33,6 +30,18 @@ export default function DashboardLayout() {
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
+
+  const toggleLanguage = () => {
+    const newLang = lang === "vi" ? "tw" : "vi";
+    localStorage.setItem("app_language", newLang);
+    window.dispatchEvent(new Event("languageChange"));
+  };
+
+  const menuItems = [
+    { title: t('layout.menu.dashboard'), url: "/", icon: LayoutDashboard },
+    { title: t('layout.menu.scans'), url: "/scans", icon: FileScan },
+    { title: t('layout.menu.upload'), url: "/upload", icon: Upload },
+  ];
 
   return (
     <SidebarProvider>
@@ -74,10 +83,25 @@ export default function DashboardLayout() {
         </Sidebar>
 
         <main className="flex-1 flex flex-col min-h-screen overflow-hidden">
-          <header className="h-14 flex items-center px-4 border-b bg-white">
-            <SidebarTrigger />
-            <div className="ml-auto font-medium text-sm">
-              Hệ thống xử lý Phiếu tạm ứng
+          <header className="h-14 flex items-center px-4 border-b bg-white justify-between">
+            <div className="flex items-center gap-2">
+              <SidebarTrigger />
+              <div className="font-medium text-sm ml-2 hidden sm:block">
+                {t('layout.header.title')}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={toggleLanguage}
+                className="flex items-center gap-2"
+                title="Đổi ngôn ngữ"
+              >
+                <Globe className="w-4 h-4" />
+                <span>{lang === "vi" ? "VN" : "TW"}</span>
+              </Button>
             </div>
           </header>
           <div className="flex-1 overflow-y-auto p-6">

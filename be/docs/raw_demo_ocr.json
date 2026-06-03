@@ -1,0 +1,554 @@
+{
+    "logId": "f5371953-33aa-4f73-a1ed-71f4999e027f",
+    "errorCode": 0,
+    "errorMsg": "Success",
+    "result": {
+        "layoutParsingResults": [
+            {
+                "prunedResult": {
+                    "page_count": null,
+                    "width": 2560,
+                    "height": 1920,
+                    "model_settings": {
+                        "use_doc_preprocessor": true,
+                        "use_layout_detection": true,
+                        "use_chart_recognition": false,
+                        "use_seal_recognition": false,
+                        "use_ocr_for_image_block": false,
+                        "format_block_content": false,
+                        "merge_layout_blocks": true,
+                        "markdown_ignore_labels": [
+                            "number",
+                            "footnote",
+                            "header",
+                            "header_image",
+                            "footer",
+                            "footer_image",
+                            "aside_text"
+                        ],
+                        "return_layout_polygon_points": true
+                    },
+                    "parsing_res_list": [
+                        {
+                            "block_label": "header_image",
+                            "block_content": "",
+                            "block_bbox": [
+                                552,
+                                201,
+                                992,
+                                322
+                            ],
+                            "block_id": 0,
+                            "block_order": null,
+                            "group_id": 0,
+                            "block_polygon_points": [
+                                [
+                                    552.0,
+                                    201.0
+                                ],
+                                [
+                                    992.0,
+                                    201.0
+                                ],
+                                [
+                                    992.0,
+                                    322.0
+                                ],
+                                [
+                                    552.0,
+                                    322.0
+                                ]
+                            ]
+                        },
+                        {
+                            "block_label": "text",
+                            "block_content": "PRO ACTIVE GLOBAL VIETNAM CO.LTD\n鋒明 (越南) 國際有限公司",
+                            "block_bbox": [
+                                490,
+                                331,
+                                1060,
+                                418
+                            ],
+                            "block_id": 1,
+                            "block_order": 1,
+                            "group_id": 1,
+                            "block_polygon_points": [
+                                [
+                                    490.0,
+                                    331.0
+                                ],
+                                [
+                                    1060.0,
+                                    331.0
+                                ],
+                                [
+                                    1060.0,
+                                    418.0
+                                ],
+                                [
+                                    490.0,
+                                    418.0
+                                ]
+                            ]
+                        },
+                        {
+                            "block_label": "doc_title",
+                            "block_content": "預支單",
+                            "block_bbox": [
+                                1285,
+                                213,
+                                1558,
+                                326
+                            ],
+                            "block_id": 2,
+                            "block_order": 2,
+                            "group_id": 2,
+                            "block_polygon_points": [
+                                [
+                                    1285.0,
+                                    213.0
+                                ],
+                                [
+                                    1558.0,
+                                    213.0
+                                ],
+                                [
+                                    1558.0,
+                                    326.0
+                                ],
+                                [
+                                    1285.0,
+                                    326.0
+                                ]
+                            ]
+                        },
+                        {
+                            "block_label": "text",
+                            "block_content": "000046",
+                            "block_bbox": [
+                                1856,
+                                146,
+                                2131,
+                                227
+                            ],
+                            "block_id": 3,
+                            "block_order": 3,
+                            "group_id": 3,
+                            "block_polygon_points": [
+                                [
+                                    1856.0,
+                                    146.0
+                                ],
+                                [
+                                    2131.0,
+                                    146.0
+                                ],
+                                [
+                                    2131.0,
+                                    227.0
+                                ],
+                                [
+                                    1856.0,
+                                    227.0
+                                ]
+                            ]
+                        },
+                        {
+                            "block_label": "text",
+                            "block_content": "PHIẾU TẠM ỨNG\n號碼：",
+                            "block_bbox": [
+                                1201,
+                                332,
+                                1642,
+                                425
+                            ],
+                            "block_id": 4,
+                            "block_order": 4,
+                            "group_id": 4,
+                            "block_polygon_points": [
+                                [
+                                    1201.0,
+                                    332.0
+                                ],
+                                [
+                                    1642.0,
+                                    332.0
+                                ],
+                                [
+                                    1642.0,
+                                    425.0
+                                ],
+                                [
+                                    1201.0,
+                                    425.0
+                                ]
+                            ]
+                        },
+                        {
+                            "block_label": "text",
+                            "block_content": "",
+                            "block_bbox": [
+                                1757,
+                                266,
+                                1889,
+                                328
+                            ],
+                            "block_id": 5,
+                            "block_order": 5,
+                            "group_id": 4,
+                            "block_polygon_points": [
+                                [
+                                    1757.0,
+                                    266.0
+                                ],
+                                [
+                                    1889.0,
+                                    266.0
+                                ],
+                                [
+                                    1889.0,
+                                    328.0
+                                ],
+                                [
+                                    1757.0,
+                                    328.0
+                                ]
+                            ]
+                        },
+                        {
+                            "block_label": "text",
+                            "block_content": "日期：2025年01月06日",
+                            "block_bbox": [
+                                1758,
+                                347,
+                                2233,
+                                430
+                            ],
+                            "block_id": 6,
+                            "block_order": 6,
+                            "group_id": 6,
+                            "block_polygon_points": [
+                                [
+                                    1758.0,
+                                    347.0
+                                ],
+                                [
+                                    2233.0,
+                                    347.0
+                                ],
+                                [
+                                    2233.0,
+                                    430.0
+                                ],
+                                [
+                                    1758.0,
+                                    430.0
+                                ]
+                            ]
+                        },
+                        {
+                            "block_label": "table",
+                            "block_content": "<table><tr><td>單位</td><td colspan=\"2\">kD</td><td>姓名</td><td>高</td><td>翊</td><td colspan=\"2\">庭</td><td>卡號</td><td colspan=\"2\">Số thẻ:</td><td colspan=\"2\">主管Chủ quản:</td></tr><tr><td>序號STT</td><td colspan=\"2\">項目Hạng mục</td><td colspan=\"3\">用途說明Mục đích sử dụng</td><td colspan=\"3\">數量單價Số lượng x Đơn giá</td><td colspan=\"2\">金额Số tiền</td><td colspan=\"2\">單據號碼Số chứng từ</td></tr><tr><td>1</td><td colspan=\"2\">水合</td><td colspan=\"3\">5/27:因不在家我先走了</td><td colspan=\"3\">1.990.000</td><td colspan=\"2\">2.700.000</td><td colspan=\"2\">5.286</td></tr><tr><td colspan=\"2\">預支金額Số tiền tạm ứng</td><td colspan=\"2\">1.000.000</td><td colspan=\"2\">簽收Ký nhận</td><td></td><td colspan=\"2\">實支Thực chi</td><td colspan=\"2\"></td><td colspan=\"2\">[ ] 補 Bố sung[ ] 退 Trả lại</td></tr><tr><td colspan=\"2\">總經理Tổng Giám Đốc</td><td colspan=\"2\">高翊庭</td><td colspan=\"2\">出納Thủ quỹ</td><td></td><td colspan=\"2\">會計Kế toán</td><td colspan=\"2\"></td><td colspan=\"2\">出納Thủ quỹ</td></tr></table>",
+                            "block_bbox": [
+                                375,
+                                442,
+                                2394,
+                                1829
+                            ],
+                            "block_id": 7,
+                            "block_order": null,
+                            "group_id": 7,
+                            "block_polygon_points": [
+                                [
+                                    375.0,
+                                    442.0
+                                ],
+                                [
+                                    2394.0,
+                                    442.0
+                                ],
+                                [
+                                    2394.0,
+                                    1829.0
+                                ],
+                                [
+                                    375.0,
+                                    1829.0
+                                ]
+                            ]
+                        }
+                    ],
+                    "doc_preprocessor_res": {
+                        "model_settings": {
+                            "use_doc_orientation_classify": true,
+                            "use_doc_unwarping": true
+                        },
+                        "angle": 0
+                    },
+                    "layout_det_res": {
+                        "boxes": [
+                            {
+                                "cls_id": 13,
+                                "label": "header_image",
+                                "score": 0.6428025364875793,
+                                "coordinate": [
+                                    552,
+                                    201,
+                                    992,
+                                    322
+                                ],
+                                "order": null,
+                                "polygon_points": [
+                                    [
+                                        552.0,
+                                        201.0
+                                    ],
+                                    [
+                                        992.0,
+                                        201.0
+                                    ],
+                                    [
+                                        992.0,
+                                        322.0
+                                    ],
+                                    [
+                                        552.0,
+                                        322.0
+                                    ]
+                                ]
+                            },
+                            {
+                                "cls_id": 22,
+                                "label": "text",
+                                "score": 0.47814226150512695,
+                                "coordinate": [
+                                    490,
+                                    331,
+                                    1060,
+                                    418
+                                ],
+                                "order": 1,
+                                "polygon_points": [
+                                    [
+                                        490.0,
+                                        331.0
+                                    ],
+                                    [
+                                        1060.0,
+                                        331.0
+                                    ],
+                                    [
+                                        1060.0,
+                                        418.0
+                                    ],
+                                    [
+                                        490.0,
+                                        418.0
+                                    ]
+                                ]
+                            },
+                            {
+                                "cls_id": 6,
+                                "label": "doc_title",
+                                "score": 0.47279080748558044,
+                                "coordinate": [
+                                    1285,
+                                    213,
+                                    1558,
+                                    326
+                                ],
+                                "order": 2,
+                                "polygon_points": [
+                                    [
+                                        1285.0,
+                                        213.0
+                                    ],
+                                    [
+                                        1558.0,
+                                        213.0
+                                    ],
+                                    [
+                                        1558.0,
+                                        326.0
+                                    ],
+                                    [
+                                        1285.0,
+                                        326.0
+                                    ]
+                                ]
+                            },
+                            {
+                                "cls_id": 22,
+                                "label": "text",
+                                "score": 0.6708094477653503,
+                                "coordinate": [
+                                    1856,
+                                    146,
+                                    2131,
+                                    227
+                                ],
+                                "order": 3,
+                                "polygon_points": [
+                                    [
+                                        1856.0,
+                                        146.0
+                                    ],
+                                    [
+                                        2131.0,
+                                        146.0
+                                    ],
+                                    [
+                                        2131.0,
+                                        227.0
+                                    ],
+                                    [
+                                        1856.0,
+                                        227.0
+                                    ]
+                                ]
+                            },
+                            {
+                                "cls_id": 22,
+                                "label": "text",
+                                "score": 0.43054911494255066,
+                                "coordinate": [
+                                    1201,
+                                    332,
+                                    1642,
+                                    425
+                                ],
+                                "order": 4,
+                                "polygon_points": [
+                                    [
+                                        1201.0,
+                                        332.0
+                                    ],
+                                    [
+                                        1642.0,
+                                        332.0
+                                    ],
+                                    [
+                                        1642.0,
+                                        425.0
+                                    ],
+                                    [
+                                        1201.0,
+                                        425.0
+                                    ]
+                                ]
+                            },
+                            {
+                                "cls_id": 22,
+                                "label": "text",
+                                "score": 0.7410581707954407,
+                                "coordinate": [
+                                    1757,
+                                    266,
+                                    1889,
+                                    328
+                                ],
+                                "order": 5,
+                                "polygon_points": [
+                                    [
+                                        1757.0,
+                                        266.0
+                                    ],
+                                    [
+                                        1889.0,
+                                        266.0
+                                    ],
+                                    [
+                                        1889.0,
+                                        328.0
+                                    ],
+                                    [
+                                        1757.0,
+                                        328.0
+                                    ]
+                                ]
+                            },
+                            {
+                                "cls_id": 22,
+                                "label": "text",
+                                "score": 0.8112829327583313,
+                                "coordinate": [
+                                    1758,
+                                    347,
+                                    2233,
+                                    430
+                                ],
+                                "order": 6,
+                                "polygon_points": [
+                                    [
+                                        1758.0,
+                                        347.0
+                                    ],
+                                    [
+                                        2233.0,
+                                        347.0
+                                    ],
+                                    [
+                                        2233.0,
+                                        430.0
+                                    ],
+                                    [
+                                        1758.0,
+                                        430.0
+                                    ]
+                                ]
+                            },
+                            {
+                                "cls_id": 21,
+                                "label": "table",
+                                "score": 0.9759160280227661,
+                                "coordinate": [
+                                    375,
+                                    442,
+                                    2394,
+                                    1829
+                                ],
+                                "order": null,
+                                "polygon_points": [
+                                    [
+                                        375.0,
+                                        442.0
+                                    ],
+                                    [
+                                        2394.0,
+                                        442.0
+                                    ],
+                                    [
+                                        2394.0,
+                                        1829.0
+                                    ],
+                                    [
+                                        375.0,
+                                        1829.0
+                                    ]
+                                ]
+                            }
+                        ]
+                    }
+                },
+                "markdown": {
+                    "text": "PRO ACTIVE GLOBAL VIETNAM CO.LTD\n\n鋒明 (越南) 國際有限公司\n\n# 預支單\n\n000046\n\nPHIẾU TẠM ỨNG\n\n號碼：\n\n\n\n日期：2025年01月06日\n\n\n<table border=1 style='margin: auto; word-wrap: break-word;'><tr><td style='text-align: center; word-wrap: break-word;'>單位</td><td colspan=\"2\">kD</td><td style='text-align: center; word-wrap: break-word;'>姓名</td><td style='text-align: center; word-wrap: break-word;'>高</td><td style='text-align: center; word-wrap: break-word;'>翊</td><td colspan=\"2\">庭</td><td style='text-align: center; word-wrap: break-word;'>卡號</td><td colspan=\"2\">Số thẻ:</td><td colspan=\"2\">主管Chủ quản:</td></tr><tr><td style='text-align: center; word-wrap: break-word;'>序號STT</td><td colspan=\"2\">項目Hạng mục</td><td colspan=\"3\">用途說明Mục đích sử dụng</td><td colspan=\"3\">數量單價Số lượng x Đơn giá</td><td colspan=\"2\">金额Số tiền</td><td colspan=\"2\">單據號碼Số chứng từ</td></tr><tr><td style='text-align: center; word-wrap: break-word;'>1</td><td colspan=\"2\">水合</td><td colspan=\"3\">5/27:因不在家我先走了</td><td colspan=\"3\">1.990.000</td><td colspan=\"2\">2.700.000</td><td colspan=\"2\">5.286</td></tr><tr><td colspan=\"2\">預支金額Số tiền tạm ứng</td><td colspan=\"2\">1.000.000</td><td colspan=\"2\">簽收Ký nhận</td><td style='text-align: center; word-wrap: break-word;'></td><td colspan=\"2\">實支Thực chi</td><td colspan=\"2\"></td><td colspan=\"2\">[ ] 補 Bố sung[ ] 退 Trả lại</td></tr><tr><td colspan=\"2\">總經理Tổng Giám Đốc</td><td colspan=\"2\">高翊庭</td><td colspan=\"2\">出納Thủ quỹ</td><td style='text-align: center; word-wrap: break-word;'></td><td colspan=\"2\">會計Kế toán</td><td colspan=\"2\"></td><td colspan=\"2\">出納Thủ quỹ</td></tr></table>",
+                    "images": {
+                        "imgs/img_in_header_image_box_552_201_992_322.jpg": "https://pplines-online.bj.bcebos.com/deploy/official/paddleocr/pp-ocr-vl-15//44b5dcac-fa78-4fef-bc26-5b0cd9872fd9/markdown_0/imgs/img_in_header_image_box_552_201_992_322.jpg?authorization=bce-auth-v1%2FALTAKDN8mY5KlNI7zaRpLmOqrw%2F2026-06-03T02%3A00%3A17Z%2F-1%2F%2Fe1a2d0d87ffed31ae241423e7edf2512a86385f6abde1501202e0ec0b2de1508"
+                    }
+                },
+                "outputImages": {
+                    "layout_det_res": "https://pplines-online.bj.bcebos.com/deploy/official/paddleocr/pp-ocr-vl-15//44b5dcac-fa78-4fef-bc26-5b0cd9872fd9/layout_det_res_0.jpg?authorization=bce-auth-v1%2FALTAKDN8mY5KlNI7zaRpLmOqrw%2F2026-06-03T02%3A00%3A17Z%2F-1%2F%2F3f022a861968911a67394e84acf75c272c21a35f2c17f88968a8ede67b0ada0e"
+                },
+                "inputImage": "https://pplines-online.bj.bcebos.com/deploy/official/paddleocr/pp-ocr-vl-15//44b5dcac-fa78-4fef-bc26-5b0cd9872fd9/input_img_0.jpg?authorization=bce-auth-v1%2FALTAKDN8mY5KlNI7zaRpLmOqrw%2F2026-06-03T02%3A00%3A18Z%2F-1%2F%2F333ed240f01347b203249f2a10d8321d157a2aa6bd02897c43458c10e1192c3c"
+            }
+        ],
+        "dataInfo": {
+            "width": 2560,
+            "height": 1920,
+            "type": "image"
+        },
+        "preprocessedImages": [
+            "https://pplines-online.bj.bcebos.com/deploy/official/paddleocr/pp-ocr-vl-15//44b5dcac-fa78-4fef-bc26-5b0cd9872fd9/preprocessed_img_0.jpg?authorization=bce-auth-v1%2FALTAKDN8mY5KlNI7zaRpLmOqrw%2F2026-06-03T02%3A00%3A17Z%2F-1%2F%2F24bfee6989e6c3274f60830e3afb84d2d42e8a73acb3919d47348add11f06aa7"
+        ]
+    }
+}

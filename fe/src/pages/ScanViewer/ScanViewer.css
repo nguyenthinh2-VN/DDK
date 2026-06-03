@@ -1,0 +1,25 @@
+.html-table-container table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.html-table-container th,
+.html-table-container td {
+  border: 1px solid #e2e8f0;
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+}
+
+.html-table-container th {
+  background-color: #f8fafc;
+  font-weight: 600;
+}
+
+.html-table-container tr:nth-child(even) {
+  background-color: #f8fafc;
+}
+
+.html-table-container tr:hover {
+  background-color: #f1f5f9;
+}
