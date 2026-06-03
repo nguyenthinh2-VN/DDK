@@ -44,25 +44,34 @@ def submit_job(
         "useChartRecognition": False,
     }
 
-    if str(file_path_or_url).startswith("http"):
-        headers["Content-Type"] = "application/json"
-        payload = {
-            "fileUrl": file_path_or_url,
-            "model": model,
-            "optionalPayload": optional_payload,
-        }
-        resp = requests.post(JOB_URL, json=payload, headers=headers, timeout=timeout)
-    else:
-        if not os.path.exists(file_path_or_url):
-            raise PaddleOCRVLError(f"File not found: {file_path_or_url}")
-        data = {"model": model, "optionalPayload": json.dumps(optional_payload)}
-        with open(file_path_or_url, "rb") as f:
-            files = {"file": f}
-            resp = requests.post(JOB_URL, headers=headers, data=data, files=files, timeout=timeout)
-
-    if resp.status_code != 200:
-        raise PaddleOCRVLError(f"Submit failed [{resp.status_code}]: {resp.text}")
-    return resp.json()["data"]["jobId"]
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            if str(file_path_or_url).startswith("http"):
+                headers["Content-Type"] = "application/json"
+                payload = {
+                    "fileUrl": file_path_or_url,
+                    "model": model,
+                    "optionalPayload": optional_payload,
+                }
+                resp = requests.post(JOB_URL, json=payload, headers=headers, timeout=timeout)
+            else:
+                if not os.path.exists(file_path_or_url):
+                    raise PaddleOCRVLError(f"File not found: {file_path_or_url}")
+                data = {"model": model, "optionalPayload": json.dumps(optional_payload)}
+                with open(file_path_or_url, "rb") as f:
+                    files = {"file": f}
+                    resp = requests.post(JOB_URL, headers=headers, data=data, files=files, timeout=timeout)
+            
+            if resp.status_code != 200:
+                raise PaddleOCRVLError(f"Submit failed [{resp.status_code}]: {resp.text}")
+            
+            return resp.json()["data"]["jobId"]
+            
+        except requests.RequestException as e:
+            if attempt == max_retries - 1:
+                raise PaddleOCRVLError(f"Submit failed after {max_retries} attempts: {str(e)}")
+            time.sleep(2) # Đợi 2s trước khi thử lại
 
 
 def call_sync(

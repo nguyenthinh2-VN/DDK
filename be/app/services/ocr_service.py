@@ -145,14 +145,29 @@ class OCRService:
             completed = 0
             failed = 0
 
+            # Đổi tất cả sang processing trước khi bắt đầu
             for scan in scans:
-                try:
-                    scan.status = "processing"
-                    await scan_repo.update(scan)
-                    await db.commit()
+                scan.status = "processing"
+                await scan_repo.update(scan)
+            await db.commit()
 
-                    result = run_ocr(scan.image_path, scan.original_filename)
+            import asyncio
+            
+            async def _run_ocr_async(img_path, original_name):
+                # chạy hàm blocking (chứa request đồng bộ) trong thread pool
+                return await asyncio.to_thread(run_ocr, img_path, original_name)
+            
+            # Gửi song song tất cả các request
+            tasks = [_run_ocr_async(scan.image_path, scan.original_filename) for scan in scans]
+            ocr_results = await asyncio.gather(*tasks, return_exceptions=True)
 
+            for idx, scan in enumerate(scans):
+                result = ocr_results[idx]
+                if isinstance(result, Exception):
+                    scan.status = "failed"
+                    scan.error_message = str(result)
+                    failed += 1
+                else:
                     scan.ocr_text = result.get("ocr_text")
                     scan.ocr_json = result.get("ocr_json")
                     scan.ocr_raw_json = result.get("ocr_raw_json")
@@ -164,10 +179,6 @@ class OCRService:
                     scan.status = "completed"
                     scan.error_message = None
                     completed += 1
-                except Exception as exc:  # noqa: BLE001 - ghi lại lỗi vào DB
-                    scan.status = "failed"
-                    scan.error_message = str(exc)
-                    failed += 1
 
                 await scan_repo.update(scan)
                 await db.commit()

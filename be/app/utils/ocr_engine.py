@@ -42,7 +42,22 @@ def _extract_table_html(markdown_text: str) -> str:
     """Trích bảng HTML từ markdown output của PaddleOCR-VL."""
     match = re.search(r"(<table.*?</table>)", markdown_text, re.DOTALL | re.IGNORECASE)
     if match:
-        return match.group(1).replace("\\n", "<br>")
+        html = match.group(1).replace("\\n", "<br>")
+        # Xóa các giá trị trong dòng chữ ký (Tổng giám đốc, Thủ quỹ...) nhưng giữ lại cấu trúc
+        rows = re.findall(r"(<tr[^>]*>.*?</tr>)", html, re.DOTALL | re.IGNORECASE)
+        for row in rows:
+            if "總經理" in row or "Tổng Giám Đốc" in row or "Tổng giám đốc" in row.lower():
+                cells = re.findall(r"(<td[^>]*>)(.*?)(</td>)", row, re.DOTALL | re.IGNORECASE)
+                new_row = row
+                for start_td, content, end_td in cells:
+                    # Nếu ô này KHÔNG chứa nhãn thì làm rỗng
+                    labels = ["總經理", "Tổng Giám Đốc", "Tổng giám đốc", "出納", "Thủ quỹ", "Thủ qũy", "會計", "Kế toán"]
+                    if not any(k in content for k in labels):
+                        old_cell = f"{start_td}{content}{end_td}"
+                        new_cell = f"{start_td}&nbsp;{end_td}" # Để trống bằng &nbsp;
+                        new_row = new_row.replace(old_cell, new_cell)
+                html = html.replace(row, new_row)
+        return html
     return ""
 
 
@@ -103,39 +118,43 @@ def _extract_fields_from_markdown(markdown_text: str, layout_boxes: list = None,
     # Lấy tất cả hàng
     rows = re.findall(r"<tr[^>]*>(.*?)</tr>", table_content, re.DOTALL | re.IGNORECASE)
 
-    # Hàng đầu: info (單位, 姓名, 卡號, 主管) - label và value nằm ở 2 ô riêng nhau
-    info = {}
+    # Hàng đầu: info (單位, 姓名, 卡號, 主管) - label và value nằm ở 2 ô riêng hoặc ghép chung
+    info = {"don_vi": "", "ho_ten": "", "so_the": "", "chu_quan": ""}
     if rows:
-        cells_raw = re.findall(r"<td[^>]*>(.*?)</td>", rows[0], re.DOTALL | re.IGNORECASE)
-        cells = [re.sub(r"<[^>]+>", "", c).strip() for c in cells_raw]
+        # Nếu PaddleOCR trả về th thay vì td
+        cells_raw = re.findall(r"<(?:td|th)[^>]*>(.*?)</(?:td|th)>", rows[0], re.DOTALL | re.IGNORECASE)
+        cells = [re.sub(r"<[^>]+>", " ", c).strip() for c in cells_raw]
 
-        # Tìm vị trí của từng label rồi lấy ô tiếp theo làm value
         for i, cell in enumerate(cells):
             if any(k in cell for k in ["單位", "Đơn vị", "Don vi"]):
-                # value ở ô kế tiếp
-                val_cells = []
+                val = re.sub(r"(?:單位|Đơn vị|Don vi)[：:]*\s*", "", cell, flags=re.IGNORECASE).strip()
+                val_cells = [val] if val else []
                 j = i + 1
-                while j < len(cells) and not any(k in cells[j] for k in ["姓名", "Họ tên", "卡號", "主管"]):
+                while j < len(cells) and not any(k in cells[j] for k in ["姓名", "Họ tên", "卡號", "Số thẻ", "主管", "Chủ quản"]):
                     if cells[j]:
                         val_cells.append(cells[j])
                     j += 1
                 info["don_vi"] = " ".join(val_cells).strip()
             elif any(k in cell for k in ["姓名", "Họ tên", "Ho ten"]):
-                val_cells = []
+                val = re.sub(r"(?:姓名|Họ tên|Ho ten)[：:]*\s*", "", cell, flags=re.IGNORECASE).strip()
+                val_cells = [val] if val else []
                 j = i + 1
-                while j < len(cells) and not any(k in cells[j] for k in ["卡號", "Số thẻ", "主管"]):
+                while j < len(cells) and not any(k in cells[j] for k in ["卡號", "Số thẻ", "主管", "Chủ quản"]):
                     if cells[j]:
                         val_cells.append(cells[j])
                     j += 1
                 info["ho_ten"] = " ".join(val_cells).strip()
             elif any(k in cell for k in ["卡號", "Số thẻ", "So the"]):
-                # value ở ô kế tiếp (bỏ qua nếu chứa label)
-                j = i + 1
-                val = cells[j] if j < len(cells) else ""
-                val = re.sub(r"(?:卡號|Số thẻ|So the)[：:]*\s*", "", val, flags=re.IGNORECASE).strip()
-                info["so_the"] = val
+                val = re.sub(r"(?:卡號|Số thẻ|So the)[：:]*\s*", "", cell, flags=re.IGNORECASE).strip()
+                # Nếu val vẫn rỗng, thử lấy ở ô tiếp theo
+                if not val and i + 1 < len(cells):
+                    next_cell = cells[i + 1]
+                    if not any(k in next_cell for k in ["主管", "Chủ quản"]):
+                        val = next_cell
+                # Tránh ghi đè nếu Số thẻ bị nhận dạng lặp
+                if not info["so_the"]:
+                    info["so_the"] = val
             elif any(k in cell for k in ["主管", "Chủ quản", "Chu quan"]):
-                # value ở ô kế tiếp hoặc trong cùng ô sau label
                 val = re.sub(r"(?:主管|Chủ quản|Chu quan)[：:]*\s*", "", cell, flags=re.IGNORECASE).strip()
                 if not val and i + 1 < len(cells):
                     val = cells[i + 1]
@@ -254,7 +273,9 @@ def run_ocr(image_path: str, original_filename: str) -> dict:
 
     from app.ocr.paddleocr_vl_client import (
         PaddleOCRVLError,
-        call_sync,
+        submit_job,
+        poll_job,
+        download_jsonl,
     )
 
     # 1. (Tùy chọn) Preprocess
@@ -266,9 +287,12 @@ def run_ocr(image_path: str, original_filename: str) -> dict:
         raise RuntimeError("PADDLEOCR_VL_TOKEN chưa cấu hình trong .env")
 
     try:
-        url = settings.PADDLEOCR_VL_SYNC_URL
-        sync_result = call_sync(processed, token=token, url=url)
-        results = [sync_result]
+        job_id = submit_job(processed, token=token)
+        data = poll_job(job_id, token=token)
+        jsonl_url = data.get("resultUrl", {}).get("jsonUrl")
+        if not jsonl_url:
+            raise PaddleOCRVLError("Done but no jsonl resultUrl returned")
+        results = download_jsonl(jsonl_url)
     except (PaddleOCRVLError, Exception) as exc:
         # Nếu API lỗi, trả kết quả rỗng + error
         return {
