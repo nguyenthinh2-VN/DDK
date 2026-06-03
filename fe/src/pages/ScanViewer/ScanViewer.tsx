@@ -216,20 +216,20 @@ export default function ScanViewer() {
                   <thead>
                     <tr className="bg-muted/20">
                       <th className="border px-3 py-2 text-left w-1/4">
-                        <div className="font-bold text-sm">單位</div>
-                        <div className="text-sm text-muted-foreground">Đơn vị:</div>
+                        <div className="font-bold text-sm text-center">單位</div>
+                        <div className="text-sm text-muted-foreground text-center">Đơn vị:</div>
                       </th>
                       <th className="border px-3 py-2 text-left w-1/4">
-                        <div className="font-bold text-sm">姓名</div>
-                        <div className="text-sm text-muted-foreground">Họ tên:</div>
+                        <div className="font-bold text-sm text-center">姓名</div>
+                        <div className="text-sm text-muted-foreground text-center">Họ tên:</div>
                       </th>
                       <th className="border px-3 py-2 text-left w-1/4">
-                        <div className="font-bold text-sm">卡號</div>
-                        <div className="text-sm text-muted-foreground">Số thẻ:</div>
+                        <div className="font-bold text-sm text-center">卡號</div>
+                        <div className="text-sm text-muted-foreground text-center">Số thẻ:</div>
                       </th>
                       <th className="border px-3 py-2 text-left w-1/4">
-                        <div className="font-bold text-sm">主管</div>
-                        <div className="text-sm text-muted-foreground">Chủ quản:</div>
+                        <div className="font-bold text-sm text-center">主管</div>
+                        <div className="text-sm text-muted-foreground text-center">Chủ quản:</div>
                       </th>
                     </tr>
                   </thead>
@@ -251,19 +251,19 @@ export default function ScanViewer() {
                         <div className="font-bold text-sm">序號</div>
                         <div className="text-sm text-muted-foreground">STT</div>
                       </th>
-                      <th className="border px-3 py-2 text-left">
+                      <th className="border px-3 py-2 text-center">
                         <div className="font-bold text-sm">項目</div>
                         <div className="text-sm text-muted-foreground">Hạng mục</div>
                       </th>
-                      <th className="border px-3 py-2 text-left">
+                      <th className="border px-3 py-2 text-center">
                         <div className="font-bold text-sm">用途說明</div>
                         <div className="text-sm text-muted-foreground">Mục đích sử dụng</div>
                       </th>
-                      <th className="border px-3 py-2 text-right">
+                      <th className="border px-3 py-2 text-center">
                         <div className="font-bold text-sm">數量單價</div>
                         <div className="text-sm text-muted-foreground">Số lượng x Đơn giá</div>
                       </th>
-                      <th className="border px-3 py-2 text-right">
+                      <th className="border px-3 py-2 text-center">
                         <div className="font-bold text-sm">金額</div>
                         <div className="text-sm text-muted-foreground">Số tiền</div>
                       </th>
@@ -284,10 +284,10 @@ export default function ScanViewer() {
                       (ocrJson.line_items || []).map((item: Record<string, string>, idx: number) => (
                         <tr key={idx} className="hover:bg-muted/20">
                           <td className="border px-3 py-3 text-center">{idx + 1}</td>
-                          <td className="border px-3 py-3">{item.hang_muc || ""}</td>
-                          <td className="border px-3 py-3">{item.muc_dich || ""}</td>
-                          <td className="border px-3 py-3 text-right">{item.so_luong_don_gia || ""}</td>
-                          <td className="border px-3 py-3 text-right font-medium">{item.so_tien || ""}</td>
+                          <td className="border px-3 py-3 text-center">{item.hang_muc || ""}</td>
+                          <td className="border px-3 py-3 text-center">{item.muc_dich || ""}</td>
+                          <td className="border px-3 py-3 text-center">{item.so_luong_don_gia || ""}</td>
+                          <td className="border px-3 py-3 text-center font-medium">{item.so_tien || ""}</td>
                           <td className="border px-3 py-3 text-center">{item.so_chung_tu || ""}</td>
                         </tr>
                       ))
@@ -300,45 +300,45 @@ export default function ScanViewer() {
                   <tbody>
                     <tr className="bg-muted/10">
                       <td className="border px-3 py-3 w-1/4">
-                        <div className="text-sm font-bold">預支金額</div>
-                        <div className="text-sm text-muted-foreground">Số tiền tạm ứng</div>
-                        <div className="font-semibold mt-1">{ocrJson.footer?.so_tien_tam_ung || ""}</div>
+                        <div className="text-sm font-bold text-center">預支金額</div>
+                        <div className="text-sm text-muted-foreground text-center">Số tiền tạm ứng</div>
+                        <div className="font-semibold mt-1 text-center">{ocrJson.footer?.so_tien_tam_ung || ""}</div>
                       </td>
                       <td className="border px-3 py-3 w-1/4">
-                        <div className="text-sm font-bold">簽收</div>
-                        <div className="text-sm text-muted-foreground">Ký nhận</div>
+                        <div className="text-sm font-bold text-center">簽收</div>
+                        <div className="text-sm text-muted-foreground text-center">Ký nhận</div>
                         <div className="mt-1">{ocrJson.footer?.ky_nhan || ""}</div>
                       </td>
                       <td className="border px-3 py-3 w-1/4">
-                        <div className="text-sm font-bold">實支</div>
-                        <div className="text-sm text-muted-foreground">Thực chi</div>
-                        <div className="mt-1">{ocrJson.footer?.thuc_chi || ""}</div>
+                        <div className="text-sm font-bold text-center">實支</div>
+                        <div className="text-sm text-muted-foreground text-center">Thực chi</div>
+                        <div className="mt-1 text-center">{ocrJson.footer?.thuc_chi || ""}</div>
                       </td>
                       <td className="border px-3 py-3 w-1/4">
-                        <div className="text-xs">[ ] 補 Bố sung</div>
-                        <div className="text-xs">[ ] 退 Trả lại</div>
+                        <div className="text-xs text-center">[ ] 補 Bố sung</div>
+                        <div className="text-xs text-center">[ ] 退 Trả lại</div>
                       </td>
                     </tr>
                     <tr className="bg-muted/10">
                       <td className="border px-3 py-3">
-                        <div className="text-sm font-bold">總經理</div>
-                        <div className="text-sm text-muted-foreground">Tổng Giám Đốc</div>
-                        <div className="mt-1">{ocrJson.footer?.tong_giam_doc || ""}</div>
+                        <div className="text-sm font-bold text-center">總經理</div>
+                        <div className="text-sm text-muted-foreground text-center">Tổng Giám Đốc</div>
+                        <div className="mt-1 text-center">{ocrJson.footer?.tong_giam_doc || ""}</div>
                       </td>
                       <td className="border px-3 py-3">
-                        <div className="text-sm font-bold">出納</div>
-                        <div className="text-sm text-muted-foreground">Thủ quỹ</div>
-                        <div className="mt-1">{ocrJson.footer?.thu_quy_1 || ""}</div>
+                        <div className="text-sm font-bold text-center">出納</div>
+                        <div className="text-sm text-muted-foreground text-center">Thủ quỹ</div>
+                        <div className="mt-1 text-center">{ocrJson.footer?.thu_quy_1 || ""}</div>
                       </td>
                       <td className="border px-3 py-3">
-                        <div className="text-sm font-bold">會計</div>
-                        <div className="text-sm text-muted-foreground">Kế toán</div>
-                        <div className="mt-1">{ocrJson.footer?.ke_toan || ""}</div>
+                        <div className="text-sm font-bold text-center">會計</div>
+                        <div className="text-sm text-muted-foreground text-center">Kế toán</div>
+                        <div className="mt-1 text-center">{ocrJson.footer?.ke_toan || ""}</div>
                       </td>
                       <td className="border px-3 py-3">
-                        <div className="text-sm font-bold">出納</div>
-                        <div className="text-sm text-muted-foreground">Thủ quỹ</div>
-                        <div className="mt-1">{ocrJson.footer?.thu_quy_2 || ""}</div>
+                        <div className="text-sm font-bold text-center">出納</div>
+                        <div className="text-sm text-muted-foreground text-center">Thủ quỹ</div>
+                        <div className="mt-1 text-center">{ocrJson.footer?.thu_quy_2 || ""}</div>
                       </td>
                     </tr>
                   </tbody>
