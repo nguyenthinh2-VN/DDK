@@ -49,11 +49,16 @@ class ScanResult(Base):
     confidence_avg = Column(Float, nullable=True, comment="Độ tin cậy trung bình")
     status = Column(String(20), default="pending", comment="pending | processing | completed | failed")
     error_message = Column(LONGTEXT, nullable=True, comment="Lý do nếu failed")
+    workflow_status = Column(String(50), default="DRAFT", comment="DRAFT | PENDING_KE_TOAN | PENDING_THU_QUY | PENDING_CEO | COMPLETED | REJECTED")
+    current_assignee_role = Column(String(50), nullable=True, comment="Role đang chờ duyệt")
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Quan hệ N-1 với ScanBatch
     batch = relationship("ScanBatch", back_populates="scans", lazy="selectin")
+    
+    # Quan hệ 1-N với ScanApproval
+    approvals = relationship("ScanApproval", back_populates="scan_result", lazy="selectin", cascade="all, delete-orphan")
 
     def __repr__(self) -> str:
         return f"<ScanResult(id={self.id}, filename={self.original_filename}, status={self.status})>"

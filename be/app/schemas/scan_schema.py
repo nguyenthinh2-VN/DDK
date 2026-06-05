@@ -65,6 +65,25 @@ class BatchStatusResponse(BaseModel):
 # ── Scan Result Response ─────────────────────────────
 
 
+class SignatureBasicResponse(BaseModel):
+    id: str
+    processed_file_path: str
+    signer_name: str
+    model_config = {"from_attributes": True}
+
+class ScanApprovalResponse(BaseModel):
+    id: str
+    user_id: str
+    role: str
+    action: str
+    note: str | None = None
+    signature_id: str | None = None
+    signature: SignatureBasicResponse | None = None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
 class ScanResultResponse(BaseModel):
     """Response chi tiết 1 phiếu scan."""
 
@@ -80,6 +99,9 @@ class ScanResultResponse(BaseModel):
     confidence_avg: float | None = None
     status: str
     error_message: str | None = None
+    workflow_status: str | None = "DRAFT"
+    current_assignee_role: str | None = None
+    approvals: list[ScanApprovalResponse] = []
     created_at: datetime
     updated_at: datetime
 
@@ -95,6 +117,8 @@ class ScanResultSummary(BaseModel):
     document_type: str | None = None
     confidence_avg: float | None = None
     status: str
+    workflow_status: str | None = "DRAFT"
+    current_assignee_role: str | None = None
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -113,6 +137,17 @@ class OCRJsonUpdateRequest(BaseModel):
     """Request body khi user chỉnh sửa lại các field trong ocr_json."""
 
     ocr_json: dict[str, Any] = Field(..., description="JSON structured đã chỉnh sửa")
+
+
+# ── Workflow Requests ────────────────────────────────
+
+class WorkflowApproveRequest(BaseModel):
+    """Request body khi user duyệt phiếu."""
+    signature_id: str | None = Field(default=None, description="ID của chữ ký sẽ chèn (nếu có)")
+
+class WorkflowRejectRequest(BaseModel):
+    """Request body khi user từ chối phiếu."""
+    note: str | None = Field(default=None, description="Lý do từ chối")
 
 
 # ── Export PDF ───────────────────────────────────────

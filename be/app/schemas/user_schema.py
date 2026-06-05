@@ -25,6 +25,7 @@ class UserUpdateRequest(BaseModel):
     """Request body khi cập nhật user (các field đều optional)."""
 
     full_name: str | None = Field(default=None, max_length=255, description="Họ tên đầy đủ")
+    password: str | None = Field(default=None, min_length=6, description="Mật khẩu mới (nếu muốn đổi)")
     role_id: str | None = Field(default=None, description="Đổi role của user")
     is_active: bool | None = Field(default=None, description="Kích hoạt / vô hiệu hóa tài khoản")
 

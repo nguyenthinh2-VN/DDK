@@ -82,6 +82,8 @@ class UserService:
 
         if data.full_name is not None:
             user.full_name = data.full_name
+        if data.password is not None:
+            user.hashed_password = hash_password(data.password)
         if data.is_active is not None:
             user.is_active = data.is_active
 

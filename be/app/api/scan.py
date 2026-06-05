@@ -43,8 +43,11 @@ from app.schemas.scan_schema import (
     ScanResultSummary,
     HTMLUpdateRequest,
     OCRJsonUpdateRequest,
+    WorkflowApproveRequest,
+    WorkflowRejectRequest,
 )
 from app.services.ocr_service import OCRService
+from app.services.workflow_service import WorkflowService
 from app.utils.auth_guard import require_permission
 from app.utils.i18n import get_message
 from app.utils.image_helper import (
@@ -312,3 +315,62 @@ async def delete_scan(
     if not deleted:
         raise LocalizedHTTPException(status.HTTP_404_NOT_FOUND, "scan.not_found", lang)
     return MessageResponse(message=get_message("scan.deleted", lang))
+
+@router.post(
+    "/{scan_id}/signature",
+    response_model=ScanResultResponse,
+    summary="Ký nháp vào phiếu",
+)
+async def draft_signature(
+    scan_id: str,
+    body: WorkflowApproveRequest,
+    lang: str = Depends(get_language),
+    current_user: User = Depends(require_permission("scan:update")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Ký nháp (chèn chữ ký vào phiếu nhưng chưa đẩy đi)."""
+    return await WorkflowService.apply_draft_signature(db, scan_id, current_user, body.signature_id)
+
+@router.delete(
+    "/{scan_id}/signature",
+    response_model=ScanResultResponse,
+    summary="Xóa chữ ký nháp",
+)
+async def remove_draft_signature(
+    scan_id: str,
+    lang: str = Depends(get_language),
+    current_user: User = Depends(require_permission("scan:update")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Xóa chữ ký nháp khỏi phiếu."""
+    return await WorkflowService.remove_draft_signature(db, scan_id, current_user)
+
+@router.post(
+    "/{scan_id}/approve",
+    response_model=ScanResultResponse,
+    summary="Phê duyệt phiếu",
+)
+async def approve_scan(
+    scan_id: str,
+    body: WorkflowApproveRequest,
+    lang: str = Depends(get_language),
+    current_user: User = Depends(require_permission("scan:update")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Phê duyệt phiếu scan (Maker trình, Kế toán/Thủ quỹ/CEO duyệt)."""
+    return await WorkflowService.approve_scan(db, scan_id, current_user, body.signature_id)
+
+@router.post(
+    "/{scan_id}/reject",
+    response_model=ScanResultResponse,
+    summary="Từ chối phiếu",
+)
+async def reject_scan(
+    scan_id: str,
+    body: WorkflowRejectRequest,
+    lang: str = Depends(get_language),
+    current_user: User = Depends(require_permission("scan:update")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Từ chối phiếu, trả về cho Maker sửa."""
+    return await WorkflowService.reject_scan(db, scan_id, current_user, body.note)

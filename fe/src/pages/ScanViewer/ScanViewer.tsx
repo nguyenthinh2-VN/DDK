@@ -5,10 +5,20 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { AlertCircle, Pencil, Save, X, Stamp } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { AlertCircle, Pencil, Save, X, Stamp, Ban, CheckCircle2, Trash2 } from "lucide-react";
 import axiosClient from "../../api/axiosClient";
 import { useTranslation } from "../../hooks/useTranslation";
+import { useAuth } from "../../contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 import "./ScanViewer.css";
+
+const getFileUrl = (filePath?: string) => {
+  if (!filePath) return "";
+  if (filePath.startsWith("http")) return filePath;
+  const base = axiosClient.defaults.baseURL || window.location.origin;
+  return new URL(filePath, base).toString();
+};
 
 interface ScanResult {
   id: string;
@@ -20,6 +30,10 @@ interface ScanResult {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ocr_json: any;
   html_content: string;
+  workflow_status: string;
+  current_assignee_role?: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  approvals?: any[];
   created_at: string;
 }
 
@@ -37,6 +51,15 @@ export default function ScanViewer() {
   const [scan, setScan] = useState<ScanResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [hoveredBbox, setHoveredBbox] = useState<number[] | null>(null);
+
+  const { user } = useAuth();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [mySignatures, setMySignatures] = useState<any[]>([]);
+  const [showSignatureSelector, setShowSignatureSelector] = useState(false);
+  const [activeSignRole, setActiveSignRole] = useState<string>("");
+  const [showRejectDialog, setShowRejectDialog] = useState(false);
+  const [rejectNote, setRejectNote] = useState("");
+  const { toast } = useToast();
 
   // ── Edit Mode States ────────────────────────────────
   const [isEditing, setIsEditing] = useState(false);
@@ -61,10 +84,23 @@ export default function ScanViewer() {
       }
     });
     observer.observe(imgRef.current);
+    observer.observe(imgRef.current);
     return () => observer.disconnect();
   }, [scan]);
 
   const { t } = useTranslation();
+
+  useEffect(() => {
+    const fetchSignatures = async () => {
+      try {
+        const res = await axiosClient.get("/api/signatures/me");
+        setMySignatures(res.data || []);
+      } catch (error) {
+        console.error("No active signature", error);
+      }
+    };
+    if (user) fetchSignatures();
+  }, [user]);
 
   useEffect(() => {
     const fetchScan = async () => {
@@ -166,6 +202,124 @@ export default function ScanViewer() {
     }
   };
 
+  const handleStartSigning = (role: string) => {
+    if (mySignatures.length === 0) {
+      toast({
+        variant: "destructive",
+        title: "Lỗi",
+        description: t('signature.require_upload'),
+      });
+      return;
+    }
+    setActiveSignRole(role);
+    setShowSignatureSelector(true);
+  };
+
+  const handleSelectSignature = async (signatureId: string) => {
+    setShowSignatureSelector(false);
+    if (!scan) return;
+    try {
+      const res = await axiosClient.post(`/api/scan/${scan.id}/signature`, {
+        signature_id: signatureId
+      });
+      setScan(res.data);
+      toast({
+        title: "Thành công",
+        description: t('signature.apply_success'),
+      });
+    } catch (error: any) {
+      console.error(error);
+      toast({
+        variant: "destructive",
+        title: "Lỗi",
+        description: error.response?.data?.detail || t('signature.apply_fail'),
+      });
+    }
+  };
+
+  const handleRemoveDraftSignature = async () => {
+    if (!scan) return;
+    try {
+      const res = await axiosClient.delete(`/api/scan/${scan.id}/signature`);
+      setScan(res.data);
+    } catch (error: any) {
+      console.error(error);
+      toast({
+        variant: "destructive",
+        title: "Lỗi",
+        description: error.response?.data?.detail || t('signature.remove_fail'),
+      });
+    }
+  };
+
+  const handleApprove = async () => {
+    if (!scan) return;
+    try {
+      const res = await axiosClient.post(`/api/scan/${scan.id}/approve`, {
+        signature_id: null
+      });
+      setScan(res.data);
+      toast({
+        title: "Thành công",
+        description: t('signature.approve_success'),
+      });
+    } catch (error: any) {
+      console.error(error);
+      toast({
+        variant: "destructive",
+        title: "Lỗi",
+        description: error.response?.data?.detail || t('signature.approve_fail'),
+      });
+    }
+  };
+
+  const handleReject = async () => {
+    if (!scan || !rejectNote.trim()) return;
+    try {
+      const res = await axiosClient.post(`/api/scan/${scan.id}/reject`, {
+        note: rejectNote
+      });
+      setScan(res.data);
+      setShowRejectDialog(false);
+      setRejectNote("");
+      toast({
+        title: "Thành công",
+        description: t('signature.reject_success'),
+      });
+    } catch (error: any) {
+      console.error(error);
+      toast({
+        variant: "destructive",
+        title: "Lỗi",
+        description: error.response?.data?.detail || t('signature.reject_fail'),
+      });
+    }
+  };
+
+
+
+  const renderSignature = (roleName: string, fallbackName: string) => {
+    if (!scan || !scan.approvals) return fallbackName;
+    const approval = scan.approvals.find((a: any) => a.role === roleName && (a.action === "APPROVED" || a.action === "DRAFT"));
+    if (approval && approval.signature) {
+      const url = getFileUrl(approval.signature.processed_file_path);
+      return (
+        <div className="relative">
+          <img src={url} alt="Signature" className="max-h-12 object-contain mx-auto" />
+          {approval.action === "DRAFT" && (
+            <span className="absolute -top-3 -right-3 text-[9px] bg-yellow-100 text-yellow-800 border border-yellow-200 px-1 py-0.5 rounded">Nháp</span>
+          )}
+        </div>
+      );
+    }
+    return fallbackName;
+  };
+
+  const hasDraftSignature = (roleName: string) => {
+    if (!scan || !scan.approvals) return false;
+    return !!scan.approvals.find((a: any) => a.role === roleName && a.action === "DRAFT");
+  };
+
   // ── Render ──────────────────────────────────────────
 
   if (loading) return <div className="p-8">{t('dashboard.table.loading')}</div>;
@@ -197,18 +351,29 @@ export default function ScanViewer() {
     );
   };
 
-  const API_URL = "http://127.0.0.1:8000"; // Should come from config
   // Use bbox_image_url for Paddle layout image if available, else original image
-  const defaultImageUrl = scan.image_path.startsWith("http") ? scan.image_path : `${API_URL}/${scan.image_path}`;
-  const paddleBboxUrl = bboxImageUrl ? (bboxImageUrl.startsWith("http") ? bboxImageUrl : `${API_URL}${bboxImageUrl}`) : defaultImageUrl;
+  const defaultImageUrl = getFileUrl(scan.image_path);
+  const paddleBboxUrl = bboxImageUrl ? getFileUrl(bboxImageUrl) : defaultImageUrl;
+  const wfStatus = scan.workflow_status || "DRAFT";
+
+  const getBadgeColor = (status: string) => {
+    const s = status.toUpperCase();
+    if (s === "COMPLETED") return "bg-green-500 hover:bg-green-600 text-white border-transparent";
+    if (s === "REJECTED" || s === "FAILED") return "bg-red-500 hover:bg-red-600 text-white border-transparent";
+    if (s === "PROCESSING" || s === "PENDING" || s === "DRAFT" || s.startsWith("PENDING_")) return "bg-yellow-500 hover:bg-yellow-600 text-white border-transparent text-gray-900";
+    return "bg-gray-500 hover:bg-gray-600 text-white border-transparent";
+  };
 
   return (
     <div className="flex flex-col h-[calc(100vh-8rem)] overflow-hidden">
       <div className="mb-4">
         <h1 className="text-2xl font-bold tracking-tight">{t('scan.detail.title')} {scan.original_filename}</h1>
         <div className="flex gap-2 mt-2">
-          <Badge variant={scan.status === 'completed' ? 'default' : 'secondary'}>
-            {scan.status.toUpperCase()}
+          <Badge className={getBadgeColor(scan.status)}>
+            OCR: {scan.status.toUpperCase()}
+          </Badge>
+          <Badge className={getBadgeColor(wfStatus)}>
+            WF: {wfStatus}
           </Badge>
           <Badge variant="outline">{scan.document_type}</Badge>
         </div>
@@ -268,13 +433,18 @@ export default function ScanViewer() {
                     {saveMessage.text}
                   </span>
                 )}
+                {scan.current_assignee_role === user?.role && wfStatus !== "DRAFT" && !isEditing && (
+                  <Button variant="destructive" size="sm" onClick={() => setShowRejectDialog(true)}>
+                    <Ban className="w-3.5 h-3.5 mr-1.5" /> Từ chối
+                  </Button>
+                )}
                 {!isEditing ? (
                   <Button
                     id="btn-edit-ocr"
                     variant="outline"
                     size="sm"
                     onClick={handleStartEdit}
-                    disabled={scan.status !== "completed"}
+                    disabled={scan.status !== "completed" || wfStatus === "COMPLETED"}
                   >
                     <Pencil className="w-3.5 h-3.5 mr-1.5" />
                     {t('scan.detail.btn_edit')}
@@ -516,10 +686,21 @@ export default function ScanViewer() {
                       <td className="border px-3 py-3 w-1/4">
                         <div className="text-sm font-bold text-center">簽收</div>
                         <div className="text-sm text-muted-foreground text-center">Ký nhận</div>
-                        <div className="mt-2 min-h-[3rem] flex items-center justify-center text-center">{displayJson.footer?.ky_nhan || ""}</div>
-                        <Button id="btn-sign-ky-nhan" variant="outline" size="sm" className="w-full mt-2 text-xs" disabled>
-                          <Stamp className="w-3.5 h-3.5 mr-1" /> Chèn chữ ký
-                        </Button>
+                        <div className="mt-2 min-h-[3rem] flex items-center justify-center text-center">{renderSignature("EMPLOYEE", displayJson.footer?.ky_nhan || "")}</div>
+                        {hasDraftSignature("EMPLOYEE") ? (
+                          <div className="flex gap-1 mt-2">
+                            <Button variant="outline" size="sm" className="w-1/2 text-xs px-1 text-red-600" onClick={handleRemoveDraftSignature} disabled={wfStatus !== "DRAFT" || user?.role !== "EMPLOYEE"}>
+                              <Trash2 className="w-3 h-3 mr-1" /> Xóa
+                            </Button>
+                            <Button size="sm" className="w-1/2 text-xs px-1" onClick={handleApprove} disabled={wfStatus !== "DRAFT" || user?.role !== "EMPLOYEE"}>
+                              <CheckCircle2 className="w-3 h-3 mr-1" /> Trình
+                            </Button>
+                          </div>
+                        ) : (
+                          <Button variant="outline" size="sm" className="w-full mt-2 text-xs" onClick={() => handleStartSigning("EMPLOYEE")} disabled={wfStatus !== "DRAFT" || user?.role !== "EMPLOYEE"}>
+                            <Stamp className="w-3.5 h-3.5 mr-1" /> Ký (Trình)
+                          </Button>
+                        )}
                       </td>
                       <td className="border px-3 py-3 w-1/4">
                         <div className="text-sm font-bold text-center">實支</div>
@@ -544,34 +725,78 @@ export default function ScanViewer() {
                       <td className="border px-3 py-4">
                         <div className="text-sm font-bold text-center">總經理</div>
                         <div className="text-sm text-muted-foreground text-center">Tổng Giám Đốc</div>
-                        <div className="mt-2 min-h-[3rem] flex items-center justify-center text-center">{displayJson.footer?.tong_giam_doc || ""}</div>
-                        <Button id="btn-sign-tgd" variant="outline" size="sm" className="w-full mt-2 text-xs" disabled>
-                          <Stamp className="w-3.5 h-3.5 mr-1" /> Chèn chữ ký
-                        </Button>
+                        <div className="mt-2 min-h-[3rem] flex items-center justify-center text-center">{renderSignature("CEO", displayJson.footer?.tong_giam_doc || "")}</div>
+                        {hasDraftSignature("CEO") ? (
+                          <div className="flex gap-1 mt-2">
+                            <Button variant="outline" size="sm" className="w-1/2 text-xs px-1 text-red-600" onClick={handleRemoveDraftSignature} disabled={wfStatus !== "PENDING_CEO" || user?.role !== "CEO"}>
+                              <Trash2 className="w-3 h-3 mr-1" /> Xóa
+                            </Button>
+                            <Button size="sm" className="w-1/2 text-xs px-1" onClick={handleApprove} disabled={wfStatus !== "PENDING_CEO" || user?.role !== "CEO"}>
+                              <CheckCircle2 className="w-3 h-3 mr-1" /> Khóa
+                            </Button>
+                          </div>
+                        ) : (
+                          <Button variant="outline" size="sm" className="w-full mt-2 text-xs" onClick={() => handleStartSigning("CEO")} disabled={wfStatus !== "PENDING_CEO" || user?.role !== "CEO"}>
+                            <Stamp className="w-3.5 h-3.5 mr-1" /> Ký duyệt
+                          </Button>
+                        )}
                       </td>
                       <td className="border px-3 py-4">
                         <div className="text-sm font-bold text-center">出納</div>
                         <div className="text-sm text-muted-foreground text-center">Thủ quỹ</div>
-                        <div className="mt-2 min-h-[3rem] flex items-center justify-center text-center">{displayJson.footer?.thu_quy_1 || ""}</div>
-                        <Button id="btn-sign-tq1" variant="outline" size="sm" className="w-full mt-2 text-xs" disabled>
-                          <Stamp className="w-3.5 h-3.5 mr-1" /> Chèn chữ ký
-                        </Button>
+                        <div className="mt-2 min-h-[3rem] flex items-center justify-center text-center">{renderSignature("TREASURY", displayJson.footer?.thu_quy_1 || "")}</div>
+                        {hasDraftSignature("TREASURY") ? (
+                          <div className="flex gap-1 mt-2">
+                            <Button variant="outline" size="sm" className="w-1/2 text-xs px-1 text-red-600" onClick={handleRemoveDraftSignature} disabled={wfStatus !== "PENDING_TREASURY" || user?.role !== "TREASURY"}>
+                              <Trash2 className="w-3 h-3 mr-1" /> Xóa
+                            </Button>
+                            <Button size="sm" className="w-1/2 text-xs px-1" onClick={handleApprove} disabled={wfStatus !== "PENDING_TREASURY" || user?.role !== "TREASURY"}>
+                              <CheckCircle2 className="w-3 h-3 mr-1" /> Khóa
+                            </Button>
+                          </div>
+                        ) : (
+                          <Button variant="outline" size="sm" className="w-full mt-2 text-xs" onClick={() => handleStartSigning("TREASURY")} disabled={wfStatus !== "PENDING_TREASURY" || user?.role !== "TREASURY"}>
+                            <Stamp className="w-3.5 h-3.5 mr-1" /> Ký duyệt
+                          </Button>
+                        )}
                       </td>
                       <td className="border px-3 py-4">
                         <div className="text-sm font-bold text-center">會計</div>
                         <div className="text-sm text-muted-foreground text-center">Kế toán</div>
-                        <div className="mt-2 min-h-[3rem] flex items-center justify-center text-center">{displayJson.footer?.ke_toan || ""}</div>
-                        <Button id="btn-sign-kt" variant="outline" size="sm" className="w-full mt-2 text-xs" disabled>
-                          <Stamp className="w-3.5 h-3.5 mr-1" /> Chèn chữ ký
-                        </Button>
+                        <div className="mt-2 min-h-[3rem] flex items-center justify-center text-center">{renderSignature("ACCOUNTING", displayJson.footer?.ke_toan || "")}</div>
+                        {hasDraftSignature("ACCOUNTING") ? (
+                          <div className="flex gap-1 mt-2">
+                            <Button variant="outline" size="sm" className="w-1/2 text-xs px-1 text-red-600" onClick={handleRemoveDraftSignature} disabled={wfStatus !== "PENDING_ACCOUNTING" || user?.role !== "ACCOUNTING"}>
+                              <Trash2 className="w-3 h-3 mr-1" /> Xóa
+                            </Button>
+                            <Button size="sm" className="w-1/2 text-xs px-1" onClick={handleApprove} disabled={wfStatus !== "PENDING_ACCOUNTING" || user?.role !== "ACCOUNTING"}>
+                              <CheckCircle2 className="w-3 h-3 mr-1" /> Khóa
+                            </Button>
+                          </div>
+                        ) : (
+                          <Button variant="outline" size="sm" className="w-full mt-2 text-xs" onClick={() => handleStartSigning("ACCOUNTING")} disabled={wfStatus !== "PENDING_ACCOUNTING" || user?.role !== "ACCOUNTING"}>
+                            <Stamp className="w-3.5 h-3.5 mr-1" /> Ký duyệt
+                          </Button>
+                        )}
                       </td>
                       <td className="border px-3 py-4">
                         <div className="text-sm font-bold text-center">出納</div>
-                        <div className="text-sm text-muted-foreground text-center">Thủ quỹ</div>
-                        <div className="mt-2 min-h-[3rem] flex items-center justify-center text-center">{displayJson.footer?.thu_quy_2 || ""}</div>
-                        <Button id="btn-sign-tq2" variant="outline" size="sm" className="w-full mt-2 text-xs" disabled>
-                          <Stamp className="w-3.5 h-3.5 mr-1" /> Chèn chữ ký
-                        </Button>
+                        <div className="text-sm text-muted-foreground text-center">Thủ quỹ (Phụ)</div>
+                        <div className="mt-2 min-h-[3rem] flex items-center justify-center text-center">{renderSignature("SUB_TREASURY", displayJson.footer?.thu_quy_2 || "")}</div>
+                        {hasDraftSignature("SUB_TREASURY") ? (
+                          <div className="flex gap-1 mt-2">
+                            <Button variant="outline" size="sm" className="w-1/2 text-xs px-1 text-red-600" onClick={handleRemoveDraftSignature} disabled={wfStatus !== "PENDING_SUB_TREASURY" || user?.role !== "SUB_TREASURY"}>
+                              <Trash2 className="w-3 h-3 mr-1" /> Xóa
+                            </Button>
+                            <Button size="sm" className="w-1/2 text-xs px-1" onClick={handleApprove} disabled={wfStatus !== "PENDING_SUB_TREASURY" || user?.role !== "SUB_TREASURY"}>
+                              <CheckCircle2 className="w-3 h-3 mr-1" /> Khóa
+                            </Button>
+                          </div>
+                        ) : (
+                          <Button variant="outline" size="sm" className="w-full mt-2 text-xs" onClick={() => handleStartSigning("SUB_TREASURY")} disabled={wfStatus !== "PENDING_SUB_TREASURY" || user?.role !== "SUB_TREASURY"}>
+                            <Stamp className="w-3.5 h-3.5 mr-1" /> (Phụ)
+                          </Button>
+                        )}
                       </td>
                     </tr>
                   </tbody>
@@ -582,6 +807,49 @@ export default function ScanViewer() {
           </CardContent>
         </Card>
       </div>
+
+      <Dialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('signature.reject_prompt')}</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <textarea
+              className="w-full min-h-[100px] p-3 border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+              placeholder="..."
+              value={rejectNote}
+              onChange={(e) => setRejectNote(e.target.value)}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowRejectDialog(false)}>{t('scan.detail.btn_cancel')}</Button>
+            <Button variant="destructive" onClick={handleReject} disabled={!rejectNote.trim()}>Xác nhận từ chối</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showSignatureSelector} onOpenChange={setShowSignatureSelector}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Chọn chữ ký / Select Signature</DialogTitle>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-4 py-4">
+            {mySignatures.map(sig => {
+              const url = getFileUrl(sig.image_url);
+              return (
+                <div
+                  key={sig.id}
+                  className="border rounded-xl p-4 flex flex-col items-center gap-2 cursor-pointer hover:bg-muted/50 transition-colors"
+                  onClick={() => handleSelectSignature(sig.id)}
+                >
+                  <img src={url} alt="Signature" className="max-h-16 object-contain" />
+                  <span className="text-xs text-muted-foreground mt-2 text-center">{sig.signer_name}</span>
+                </div>
+              );
+            })}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

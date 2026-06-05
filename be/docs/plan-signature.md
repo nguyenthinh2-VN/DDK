@@ -1,177 +1,190 @@
-# Chức năng chèn Chữ ký vào Phiếu Scan — Phương án A (Thư viện Chữ ký)
+# Plan Phase 1: Upload chu ky, 1 account = 1 chu ky active
 
-## Tổng quan Flow
+## Progress
 
-```
-┌────────────────────────────────────────────────────────────────────┐
-│  QUẢN LÝ CHỮ KÝ (trang Settings hoặc Sidebar → "Quản lý chữ ký")│
-│                                                                    │
-│  1. User (có quyền) vào trang "Quản lý Chữ ký"                   │
-│  2. Bấm "Upload chữ ký mới"                                       │
-│  3. Popup/Form hiện ra:                                            │
-│     - Chọn ảnh (PNG transparent hoặc JPG nền trắng)                │
-│     - Nhập tên người ký (VD: 高翊庭 Cao Dực Đình)                  │
-│     - Chọn vị trí/chức vụ (Tổng Giám Đốc / Thủ quỹ / Kế toán)   │
-│  4. Backend nhận file → convert sang base64 → lưu vào DB           │
-│  5. Hiển thị danh sách chữ ký dạng grid card (ảnh + tên + chức vụ)│
-└────────────────────────────────────────────────────────────────────┘
-                              ↓
-┌────────────────────────────────────────────────────────────────────┐
-│  CHÈN CHỮ KÝ VÀO PHIẾU (ScanViewer)                              │
-│                                                                    │
-│  1. User mở chi tiết phiếu scan                                   │
-│  2. Bấm "Chèn chữ ký" ở ô cần ký (VD: ô Tổng Giám Đốc)         │
-│  3. Modal/Dialog popup lên → hiện danh sách chữ ký phù hợp       │
-│     (lọc theo vị trí: chỉ hiện chữ ký của Tổng Giám Đốc)        │
-│  4. User bấm chọn 1 chữ ký → ảnh preview ngay trong ô            │
-│  5. Bấm "Lưu" → API PUT cập nhật signature_id vào ocr_json       │
-│  6. Backend render lại html_content (Jinja2 nhúng <img base64>)   │
-└────────────────────────────────────────────────────────────────────┘
-                              ↓
-┌────────────────────────────────────────────────────────────────────┐
-│  XUẤT PDF                                                          │
-│                                                                    │
-│  1. User bấm "Xuất PDF"                                           │
-│  2. Backend lấy html_content (đã có ảnh chữ ký base64 nhúng sẵn) │
-│  3. WeasyPrint render HTML → PDF                                   │
-│  4. Trả file PDF có chữ ký đẹp về cho user                       │
-└────────────────────────────────────────────────────────────────────┘
-```
+- [x] Cap nhat role constants sang `CEO`, `THU_QUY`, `KE_TOAN`, `MAKER`
+- [x] Cap nhat `seed.sql` them role va permission `signature:*`
+- [x] Tao bang `signatures`
+- [x] Tao migration script `be/scripts/migrate_signature.sql`
+- [x] Tao backend `model / repository / service / schema / router` cho chu ky
+- [x] Ho tro 2 mode upload:
+  - [x] Backend tu xoa nen
+  - [x] Upload anh da xoa nen san
+- [x] Xu ly anh chu ky bang OpenCV va xuat PNG
+- [x] Tao frontend page quan ly chu ky trong `fe/`
+- [x] Them route va sidebar menu cho trang chu ky
+- [x] Cho phep xem chu ky hien tai va go chu ky hien tai
+- [ ] Workflow ky tuan tu
+- [ ] Reject / tra ve maker
+- [ ] Sign history
+- [ ] Chen chu ky vao ScanViewer / PDF
 
----
+## Pham vi da lam
 
-## 1. Ma trận Role — Quyền Ký (Signature Permission Matrix)
+Phase nay chi tap trung vao nen mong:
 
-Hệ thống phân quyền hiện có: Role (`CEO`, `DIRECTOR`, `MANAGER`, `EMPLOYEE`) ↔ Permission (N-N qua bảng `role_permissions`).
+1. Moi tai khoan co toi da 1 chu ky active.
+2. User co the upload anh chu ky moi.
+3. User co the chon:
+   - backend tu xoa nen
+   - anh da trong suot san
+4. He thong luu file goc va file da xu ly.
+5. Frontend co trang rieng de upload, preview, thay the va xoa chu ky.
 
-### Permission codes mới cần thêm vào bảng `permissions`:
+## Auth / role
 
-| Permission Code | Mô tả | Ghi chú |
-|---|---|---|
-| `signature:upload` | Upload/Xóa chữ ký vào thư viện | Admin hoặc chính người ký |
-| `signature:read` | Xem danh sách chữ ký | Tất cả user |
-| `sign:tong_giam_doc` | Quyền ký vào ô Tổng Giám Đốc | Chỉ CEO |
-| `sign:thu_quy` | Quyền ký vào ô Thủ quỹ | Chỉ role Thủ quỹ |
-| `sign:ke_toan` | Quyền ký vào ô Kế toán | Chỉ role Kế toán |
-| `sign:ky_nhan` | Quyền ký vào ô Ký nhận | Người nhận tiền (linh hoạt) |
+Role hien tai trong codebase da duoc doi ve:
 
-### Ma trận gán quyền (gợi ý — bạn tùy chỉnh theo công ty):
+- `CEO`
+- `THU_QUY`
+- `KE_TOAN`
+- `MAKER`
 
-| Role | `signature:upload` | `signature:read` | `sign:tong_giam_doc` | `sign:thu_quy` | `sign:ke_toan` | `sign:ky_nhan` |
-|---|---|---|---|---|---|---|
-| **CEO** | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
-| **DIRECTOR** | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| **MANAGER** | ❌ | ✅ | ❌ | ❌ | ❌ | ✅ |
-| **EMPLOYEE** | ❌ | ✅ | ❌ | ❌ | ❌ | ✅ |
-| *Thủ quỹ** | ✅ | ✅ | ❌ | ✅ | ❌ | ❌ |
-| *Kế toán** | ✅ | ✅ | ❌ | ❌ | ✅ | ❌ |
+Code lien quan:
 
-> [!IMPORTANT]
-> **Thủ quỹ / Kế toán** hiện chưa có trong bảng `roles`. Bạn có thể thêm 2 role mới, hoặc gán permission trực tiếp cho user cụ thể. Kế hoạch này thiết kế permission code sẵn để sau này bạn chỉ cần `INSERT` vào bảng `permissions` + `role_permissions` mà không cần sửa code.
+- `be/app/config/constants.py`
+- `be/scripts/seed.sql`
 
----
+Luu y:
 
-## 2. Thiết kế Database
+- Cac endpoint admin dang dung check theo level van duoc giu tuong thich qua alias constant.
 
-### Bảng mới: `signatures`
+## Database
 
-```sql
-CREATE TABLE signatures (
-    id          VARCHAR(36) PRIMARY KEY,
-    name        VARCHAR(255) NOT NULL COMMENT 'Tên người ký (VD: 高翊庭)',
-    position    VARCHAR(50)  NOT NULL COMMENT 'Vị trí ký: tong_giam_doc | thu_quy | ke_toan | ky_nhan',
-    image_path  VARCHAR(500) NOT NULL COMMENT 'Đường dẫn file ảnh gốc',
-    image_base64 LONGTEXT    NOT NULL COMMENT 'Ảnh dạng base64 data URI để nhúng HTML/PDF',
-    uploaded_by VARCHAR(36)  NULL     COMMENT 'FK → users.id (ai upload)',
-    is_active   BOOLEAN DEFAULT TRUE,
-    created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at  DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-);
-```
+Bang moi:
 
-### Cập nhật `ocr_json` (trong bảng `scan_results`):
+- `signatures`
 
-Khi user chèn chữ ký, thêm các trường `*_signature_id` vào footer:
-```json
-{
-  "footer": {
-    "so_tien_tam_ung": "294000",
-    "tong_giam_doc_signature_id": "uuid-of-signature",
-    "thu_quy_1_signature_id": "uuid-of-signature",
-    "ke_toan_signature_id": "uuid-of-signature",
-    "ky_nhan_signature_id": "uuid-of-signature",
-    "thu_quy_2_signature_id": null
-  }
-}
-```
+Muc dich:
 
----
+- Luu chu ky cua user
+- Danh dau `is_active`
+- Luu ca file goc va file da xu ly
 
-## 3. Backend API
+Script:
 
-### [NEW] `app/api/signature.py`
+- `be/scripts/migrate_signature.sql`
 
-| Method | URL | Permission | Mô tả |
-|---|---|---|---|
-| `POST` | `/api/signatures/upload` | `signature:upload` | Upload ảnh chữ ký (form: name, position, file) |
-| `GET` | `/api/signatures` | `signature:read` | Lấy danh sách (có thể lọc theo `?position=thu_quy`) |
-| `GET` | `/api/signatures/{id}` | `signature:read` | Chi tiết 1 chữ ký |
-| `DELETE` | `/api/signatures/{id}` | `signature:upload` | Xóa chữ ký |
+## Backend API da lam
 
-### [MODIFY] `app/services/ocr_service.py` — `update_ocr_json`
+Router:
 
-Khi render HTML (Jinja2):
-1. Đọc các trường `*_signature_id` trong `ocr_json.footer`
-2. Query DB lấy `image_base64` tương ứng
-3. Truyền vào template → render `<img src="data:image/png;base64,..." />` vào ô chữ ký
+- `be/app/api/signature.py`
 
-### [MODIFY] `app/templates/advance_payment_slip.html`
+Endpoints:
 
-Thêm render ảnh chữ ký vào các ô:
-```html
-<td>
-  總經理<br>Tổng Giám Đốc
-  {% if signatures.tong_giam_doc %}
-    <br><img src="{{ signatures.tong_giam_doc }}" style="max-height: 60px;" />
-  {% endif %}
-</td>
-```
+- `POST /api/signatures/upload`
+- `GET /api/signatures/me`
+- `DELETE /api/signatures/me`
 
----
+### Request upload
 
-## 4. Frontend
+`multipart/form-data`
 
-### [NEW] Trang "Quản lý Chữ ký" (`/signatures`)
+Fields:
 
-- Hiển thị danh sách chữ ký dạng grid card
-- Mỗi card: ảnh preview + tên + chức vụ + nút Xóa
-- Nút "Upload chữ ký mới" → Form/Dialog:
-  - Input: Tên người ký
-  - Select: Chức vụ (Tổng Giám Đốc / Thủ quỹ / Kế toán / Ký nhận)
-  - File input: Chọn ảnh (PNG/JPG, max 2MB)
-  - Preview ảnh trước khi upload
-  - Nút Submit → gọi API POST
+- `file`
+- `signer_name`
+- `remove_background`
 
-### [MODIFY] ScanViewer — Kích hoạt button "Chèn chữ ký"
+### Rule upload
 
-- Bấm button → mở Dialog/Modal
-- Dialog hiển thị danh sách chữ ký (lọc theo position tương ứng)
-- Bấm chọn → ảnh hiển thị preview trong ô
-- Lưu `signature_id` vào `editedJson.footer.*_signature_id`
-- Khi bấm "Lưu" → gọi API PUT cập nhật toàn bộ
+- Cho phep `.png`, `.jpg`, `.jpeg`
+- Gioi han 3 MB
+- Neu user da co chu ky active:
+  - chu ky cu se bi set `is_active = false`
+  - chu ky moi tro thanh active
 
----
+## Xu ly anh
 
-## 5. Verification Plan
+Helper:
 
-### Manual Verification
-1. Vào trang "Quản lý Chữ ký" → Upload 1 ảnh chữ ký cho Tổng Giám Đốc
-2. Mở 1 phiếu scan → Bấm "Chèn chữ ký" ở ô Tổng Giám Đốc → Chọn chữ ký vừa upload
-3. Ảnh chữ ký hiển thị trong ô
-4. Bấm "Xuất PDF" → Kiểm tra PDF có ảnh chữ ký đúng vị trí
+- `be/app/utils/signature_image_helper.py`
 
-## Open Questions
+Da ho tro:
 
-> [!IMPORTANT]
-> 1. **Menu sidebar:** Bạn muốn đặt trang "Quản lý Chữ ký" ở đâu trong sidebar? (VD: mục mới "Cài đặt" hoặc nằm riêng?)
-> 2. **Ảnh chữ ký:** Bạn có sẵn ảnh chữ ký scan chưa? Hay cần tôi hỗ trợ tạo công cụ xóa nền (background removal)?
+1. Luu file goc vao `uploads/signatures/original/`
+2. Neu `remove_background = true`:
+   - dung OpenCV threshold + morphology
+   - tao PNG co alpha nen trong suot
+3. Neu `remove_background = false`:
+   - chuan hoa anh dau vao thanh PNG
+   - giu nguyen nen trong suot neu file da co san
+4. Luu file ket qua vao `uploads/signatures/processed/`
+
+## Frontend da lam
+
+Trang moi:
+
+- `fe/src/pages/Signature/SignatureManager.tsx`
+
+Da ho tro:
+
+- upload chu ky
+- chon mode xoa nen / da xoa nen san
+- preview anh vua chon
+- xem chu ky active hien tai
+- go chu ky active
+
+Route:
+
+- `/signature`
+
+Menu:
+
+- da them vao sidebar
+
+## File da tao
+
+Backend:
+
+- `be/app/models/signature.py`
+- `be/app/repositories/signature_repository.py`
+- `be/app/services/signature_service.py`
+- `be/app/schemas/signature_schema.py`
+- `be/app/api/signature.py`
+- `be/app/utils/signature_image_helper.py`
+- `be/scripts/migrate_signature.sql`
+
+Frontend:
+
+- `fe/src/pages/Signature/SignatureManager.tsx`
+
+## File da sua
+
+Backend:
+
+- `be/app/config/settings.py`
+- `be/app/config/constants.py`
+- `be/app/main.py`
+- `be/app/models/user.py`
+- `be/scripts/seed.sql`
+
+Frontend:
+
+- `fe/src/App.tsx`
+- `fe/src/contexts/AuthContext.tsx`
+- `fe/src/layouts/DashboardLayout.tsx`
+- `fe/src/pages/Dashboard/Dashboard.tsx`
+- `fe/tsconfig.app.json`
+
+## Verification
+
+Da verify:
+
+- [x] Backend compile OK bang bundled Python runtime
+
+Chua verify tron ven:
+
+- [ ] FE build clean
+
+Ly do:
+
+- Repo hien dang thieu mot so package Radix trong moi truong build (`@radix-ui/react-dropdown-menu`, `@radix-ui/react-scroll-area`, `@radix-ui/react-tabs`), khong phai loi moi do page chu ky tao ra.
+
+## Buoc tiep theo de code tiep
+
+1. Chay migration tao bang `signatures`
+2. Seed lai roles / permissions neu DB hien tai van dang dung role cu
+3. Noi ScanViewer voi chu ky active cua user
+4. Lam workflow ky tuan tu va sign history

@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { FileScan, Trash2 } from "lucide-react";
 import axiosClient from "../../api/axiosClient";
 import { useTranslation } from "../../hooks/useTranslation";
+import { useToast } from "@/hooks/use-toast";
 
 interface ScanSummary {
   id: string;
@@ -27,6 +28,7 @@ export default function Scans() {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const { toast } = useToast();
 
   useEffect(() => {
     fetchScans();
@@ -50,7 +52,11 @@ export default function Scans() {
         await axiosClient.delete(`/api/scan/${id}`);
         fetchScans();
       } catch (error) {
-        alert(t('scans.alert.delete_fail'));
+        toast({
+          variant: "destructive",
+          title: "Lỗi",
+          description: t('scans.alert.delete_fail'),
+        });
       }
     }
   };

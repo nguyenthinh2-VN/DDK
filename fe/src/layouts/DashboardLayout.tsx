@@ -1,4 +1,3 @@
-import React from "react";
 import { Outlet, Navigate, Link } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import {
@@ -15,7 +14,7 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { FileScan, Upload, LayoutDashboard, LogOut, Globe } from "lucide-react";
+import { FileScan, Upload, LayoutDashboard, LogOut, Globe, PenTool, Users, History } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "../hooks/useTranslation";
 
@@ -40,8 +39,14 @@ export default function DashboardLayout() {
   const menuItems = [
     { title: t('layout.menu.dashboard'), url: "/", icon: LayoutDashboard },
     { title: t('layout.menu.scans'), url: "/scans", icon: FileScan },
+    { title: t('audit.title'), url: "/audit-logs", icon: History },
     { title: t('layout.menu.upload'), url: "/upload", icon: Upload },
+    { title: t('layout.menu.signature'), url: "/signature", icon: PenTool },
   ];
+
+  if (user?.role_level && user.role_level <= 3) {
+    menuItems.push({ title: t('layout.menu.users'), url: "/users", icon: Users });
+  }
 
   return (
     <SidebarProvider>
@@ -72,7 +77,7 @@ export default function DashboardLayout() {
           <SidebarFooter className="border-t p-4">
             <div className="flex items-center justify-between">
               <div className="flex flex-col">
-                <span className="text-sm font-medium">{user?.fullname}</span>
+                <span className="text-sm font-medium">{user?.full_name}</span>
                 <span className="text-xs text-zinc-500 capitalize">{user?.role}</span>
               </div>
               <button onClick={logout} className="p-2 hover:bg-zinc-100 rounded-md transition-colors" title="Đăng xuất">

@@ -1,11 +1,12 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
-import axiosClient from "../api/axiosClient";
+import React, { createContext, useContext, useEffect, useState } from "react";
 
-interface User {
-  id: number;
+export interface User {
+  id: string;
   username: string;
-  fullname: string;
+  full_name: string;
   role: string;
+  role_level?: number;
+  permissions?: string[];
 }
 
 interface AuthContextType {
@@ -23,14 +24,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check if user is logged in
     const token = localStorage.getItem("access_token");
     const storedUser = localStorage.getItem("user_info");
     if (token && storedUser) {
       try {
         setUser(JSON.parse(storedUser));
       } catch (e) {
-        console.error("Failed to parse user info");
+        console.error("Failed to parse user info", e);
       }
     }
     setLoading(false);

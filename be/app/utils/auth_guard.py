@@ -75,15 +75,18 @@ async def get_current_user(
     return user
 
 
-def require_min_role(min_level: int):
+def require_min_role(min_role_or_level):
     """
     Factory tạo dependency yêu cầu cấp bậc role tối thiểu.
 
-    min_level là level cao nhất được phép (số nhỏ = quyền cao).
-    VD: require_min_role(2) cho phép CEO(1) và DIRECTOR(2), chặn MANAGER(3).
-
-    Dùng: Depends(require_min_role(ROLE_DIRECTOR))
+    min_role_or_level có thể là level cao nhất được phép (int) hoặc tên role (str).
+    VD: require_min_role(2) hoặc require_min_role("TREASURY").
     """
+    if isinstance(min_role_or_level, str):
+        from app.config.constants import ROLE_LEVEL_MAP
+        min_level = next((lvl for lvl, name in ROLE_LEVEL_MAP.items() if name == min_role_or_level), 999)
+    else:
+        min_level = int(min_role_or_level)
 
     async def _checker(
         current_user: User = Depends(get_current_user),

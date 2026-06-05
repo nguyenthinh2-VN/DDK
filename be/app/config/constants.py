@@ -1,38 +1,47 @@
 """
-Constants - Hằng số dùng chung toàn ứng dụng.
-
-Định nghĩa cấp bậc role (level) và danh sách role/permission mặc định
-để seed dữ liệu ban đầu.
+Constants dung chung toan ung dung.
 """
 
-# ── Role Levels (số nhỏ = quyền cao) ─────────────────
-ROLE_CEO = 1
-ROLE_DIRECTOR = 2
-ROLE_MANAGER = 3
-ROLE_EMPLOYEE = 4
+ROLE_CEO = "CEO"
+ROLE_TREASURY = "TREASURY"
+ROLE_SUB_TREASURY = "SUB_TREASURY"
+ROLE_ACCOUNTING = "ACCOUNTING"
+ROLE_EMPLOYEE = "MAKER"
 
+# Backward-compatible aliases for old min-role checks.
+ROLE_DIRECTOR = ROLE_TREASURY
+ROLE_MANAGER = ROLE_ACCOUNTING
 
-# ── Định nghĩa role mặc định (seed) ──────────────────
-# (name, display_name, level)
+# Map level sang role để giữ tính tương thích với hệ thống cũ (nếu có check level)
+ROLE_LEVEL_MAP = {
+    1: ROLE_CEO,
+    2: ROLE_TREASURY,
+    3: ROLE_ACCOUNTING,
+    4: ROLE_EMPLOYEE,
+    5: ROLE_SUB_TREASURY
+}
+
 DEFAULT_ROLES = [
-    ("CEO", "Giám đốc điều hành", ROLE_CEO),
-    ("DIRECTOR", "Giám đốc", ROLE_DIRECTOR),
-    ("MANAGER", "Quản lý", ROLE_MANAGER),
-    ("EMPLOYEE", "Nhân viên", ROLE_EMPLOYEE),
+    ("CEO", "Giam doc dieu hanh", ROLE_CEO),
+    ("TREASURY", "Thu quy", ROLE_TREASURY),
+    ("SUB_TREASURY", "Thu quy phu", ROLE_SUB_TREASURY),
+    ("ACCOUNTING", "Ke toan", ROLE_ACCOUNTING),
+    ("EMPLOYEE", "Nhan vien / Maker", ROLE_EMPLOYEE),
 ]
 
-
-# ── Định nghĩa permission mặc định (seed) ────────────
-# (code, name)
 DEFAULT_PERMISSIONS = [
-    ("scan:upload", "Tải ảnh lên để scan"),
-    ("scan:read", "Xem kết quả scan"),
-    ("scan:update", "Chỉnh sửa kết quả scan"),
-    ("scan:delete", "Xóa kết quả scan"),
-    ("user:create", "Tạo người dùng"),
-    ("user:read", "Xem người dùng"),
-    ("user:update", "Cập nhật người dùng"),
-    ("user:delete", "Xóa người dùng"),
-    ("role:read", "Xem vai trò"),
-    ("role:assign_permission", "Gán quyền cho vai trò"),
+    ("scan:upload", "Tai anh len de scan"),
+    ("scan:read", "Xem ket qua scan"),
+    ("scan:update", "Chinh sua ket qua scan"),
+    ("scan:delete", "Xoa ket qua scan"),
+    ("user:create", "Tao nguoi dung"),
+    ("user:read", "Xem nguoi dung"),
+    ("user:update", "Cap nhat nguoi dung"),
+    ("user:delete", "Xoa nguoi dung"),
+    ("role:read", "Xem vai tro"),
+    ("role:assign_permission", "Gan quyen cho vai tro"),
+    ("signature:read", "Xem chu ky"),
+    ("signature:create", "Tai len chu ky"),
+    ("signature:update", "Cap nhat chu ky"),
+    ("signature:delete", "Xoa chu ky"),
 ]
