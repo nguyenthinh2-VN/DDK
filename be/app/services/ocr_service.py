@@ -224,12 +224,19 @@ class OCRService:
 
     @staticmethod
     async def update_ocr_json(db, scan_id: str, ocr_json: dict) -> ScanResult | None:
-        """Cập nhật ocr_json sau khi user sửa field."""
+        """Cập nhật ocr_json sau khi user sửa field + đồng bộ html_content."""
+        from app.utils.html_renderer import render_slip_html
+
         repo = ScanRepository(db)
         scan = await repo.find_by_id(scan_id)
         if scan is None:
             return None
         scan.ocr_json = ocr_json
+        # Đồng bộ: render lại HTML từ JSON mới để pdf/chữ ký luôn chính xác
+        try:
+            scan.html_content = render_slip_html(ocr_json)
+        except Exception:
+            pass  # Nếu render lỗi, giữ nguyên html_content cũ
         return await repo.update(scan)
 
     @staticmethod

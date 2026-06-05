@@ -3,7 +3,9 @@ import { useParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { AlertCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { AlertCircle, Pencil, Save, X, Stamp } from "lucide-react";
 import axiosClient from "../../api/axiosClient";
 import { useTranslation } from "../../hooks/useTranslation";
 import "./ScanViewer.css";
@@ -35,6 +37,13 @@ export default function ScanViewer() {
   const [scan, setScan] = useState<ScanResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [hoveredBbox, setHoveredBbox] = useState<number[] | null>(null);
+
+  // ── Edit Mode States ────────────────────────────────
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [editedJson, setEditedJson] = useState<any>(null);
+  const [saveMessage, setSaveMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   // Dimensions for bbox scaling
   const [imgNaturalSize, setImgNaturalSize] = useState({ w: 1, h: 1 });
@@ -71,13 +80,102 @@ export default function ScanViewer() {
     if (id) fetchScan();
   }, [id]);
 
+  // ── Edit Mode Handlers ──────────────────────────────
+
+  const handleStartEdit = () => {
+    if (!scan) return;
+    // Deep clone ocr_json để không mutate trực tiếp state gốc
+    setEditedJson(JSON.parse(JSON.stringify(scan.ocr_json || {})));
+    setIsEditing(true);
+    setSaveMessage(null);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    setEditedJson(null);
+    setSaveMessage(null);
+  };
+
+  // Cập nhật field cấp 1 (form_no, ngay)
+  const handleFieldChange = (field: string, value: string) => {
+    setEditedJson((prev: Record<string, unknown>) => ({ ...prev, [field]: value }));
+  };
+
+  // Cập nhật field trong info object (don_vi, ho_ten, so_the, chu_quan)
+  const handleInfoChange = (field: string, value: string) => {
+    setEditedJson((prev: Record<string, unknown>) => ({
+      ...prev,
+      info: { ...(prev.info as Record<string, string>), [field]: value },
+    }));
+  };
+
+  // Cập nhật field trong footer object
+  const handleFooterChange = (field: string, value: string) => {
+    setEditedJson((prev: Record<string, unknown>) => ({
+      ...prev,
+      footer: { ...(prev.footer as Record<string, string>), [field]: value },
+    }));
+  };
+
+  // Cập nhật một ô trong line_items (mở rộng: index + field)
+  const handleUpdateRow = (index: number, field: string, value: string) => {
+    setEditedJson((prev: Record<string, unknown>) => {
+      const items = [...((prev.line_items as Record<string, string>[]) || [])];
+      items[index] = { ...items[index], [field]: value };
+      return { ...prev, line_items: items };
+    });
+  };
+
+  // Hàm mở rộng - thêm dòng mới (chưa hiển thị nút nhưng logic đã sẵn sàng)
+  // const handleAddRow = () => {
+  //   setEditedJson((prev: Record<string, unknown>) => {
+  //     const items = [...((prev.line_items as Record<string, string>[]) || [])];
+  //     items.push({ hang_muc: "", muc_dich: "", so_luong_don_gia: "", so_tien: "", so_chung_tu: "" });
+  //     return { ...prev, line_items: items };
+  //   });
+  // };
+
+  // Hàm mở rộng - xóa dòng (chưa hiển thị nút nhưng logic đã sẵn sàng)
+  // const handleDeleteRow = (index: number) => {
+  //   setEditedJson((prev: Record<string, unknown>) => {
+  //     const items = [...((prev.line_items as Record<string, string>[]) || [])];
+  //     items.splice(index, 1);
+  //     return { ...prev, line_items: items };
+  //   });
+  // };
+
+  const handleSave = async () => {
+    if (!scan || !editedJson) return;
+    setIsSaving(true);
+    setSaveMessage(null);
+    try {
+      const res = await axiosClient.put(`/api/scan/${scan.id}/json`, {
+        ocr_json: editedJson,
+      });
+      setScan(res.data);
+      setIsEditing(false);
+      setEditedJson(null);
+      setSaveMessage({ type: "success", text: t("scan.detail.save_success") });
+      // Tự động ẩn thông báo thành công sau 3 giây
+      setTimeout(() => setSaveMessage(null), 3000);
+    } catch (error) {
+      console.error("Failed to save OCR JSON", error);
+      setSaveMessage({ type: "error", text: t("scan.detail.save_fail") });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // ── Render ──────────────────────────────────────────
+
   if (loading) return <div className="p-8">{t('dashboard.table.loading')}</div>;
   if (!scan) return <div className="p-8">{t('scan.detail.not_found')}</div>;
 
-  const ocrJson = scan.ocr_json || {};
-  const tableBbox = ocrJson.table_bbox;
-  const tableScore = ocrJson.table_score;
-  const bboxImageUrl = ocrJson.bbox_image_url;
+  // Dữ liệu hiển thị: nếu đang edit thì dùng editedJson, nếu không thì dùng ocr_json gốc
+  const displayJson = isEditing ? editedJson : (scan.ocr_json || {});
+  const tableBbox = (scan.ocr_json || {}).table_bbox;
+  const tableScore = (scan.ocr_json || {}).table_score;
+  const bboxImageUrl = (scan.ocr_json || {}).bbox_image_url;
 
   // Calculate scaled box coordinates
   // box = [x_min, y_min, x_max, y_max]
@@ -162,7 +260,50 @@ export default function ScanViewer() {
         {/* RIGHT PANEL: Data Viewer */}
         <Card className="flex flex-col overflow-hidden">
           <CardHeader className="py-3 px-4 border-b flex-shrink-0">
-            <CardTitle className="text-sm">{t('scan.detail.extract_result')}</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm">{t('scan.detail.extract_result')}</CardTitle>
+              <div className="flex items-center gap-2">
+                {saveMessage && (
+                  <span className={`text-xs px-2 py-1 rounded ${saveMessage.type === "success" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+                    {saveMessage.text}
+                  </span>
+                )}
+                {!isEditing ? (
+                  <Button
+                    id="btn-edit-ocr"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleStartEdit}
+                    disabled={scan.status !== "completed"}
+                  >
+                    <Pencil className="w-3.5 h-3.5 mr-1.5" />
+                    {t('scan.detail.btn_edit')}
+                  </Button>
+                ) : (
+                  <>
+                    <Button
+                      id="btn-cancel-edit"
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleCancelEdit}
+                      disabled={isSaving}
+                    >
+                      <X className="w-3.5 h-3.5 mr-1.5" />
+                      {t('scan.detail.btn_cancel')}
+                    </Button>
+                    <Button
+                      id="btn-save-ocr"
+                      size="sm"
+                      onClick={handleSave}
+                      disabled={isSaving}
+                    >
+                      <Save className="w-3.5 h-3.5 mr-1.5" />
+                      {isSaving ? t('scan.detail.btn_saving') : t('scan.detail.btn_save')}
+                    </Button>
+                  </>
+                )}
+              </div>
+            </div>
           </CardHeader>
           <CardContent className="flex-1 overflow-auto p-4 space-y-4">
 
@@ -170,26 +311,44 @@ export default function ScanViewer() {
             <div className="grid grid-cols-2 gap-3">
               <div
                 className="bg-card border rounded p-3 cursor-pointer hover:bg-muted/50 transition-colors"
-                onMouseEnter={() => setHoveredBbox(ocrJson.form_no_bbox || null)}
+                onMouseEnter={() => setHoveredBbox((scan.ocr_json || {}).form_no_bbox || null)}
                 onMouseLeave={() => setHoveredBbox(null)}
               >
                 <div className="text-sm text-muted-foreground mb-1">{t('scan.detail.form_no')}</div>
-                <div className="font-semibold flex items-center">
-                  {ocrJson.form_no || "N/A"}
-                  {ocrJson.form_no_score !== undefined && <WarningIcon score={ocrJson.form_no_score} />}
-                </div>
+                {isEditing ? (
+                  <Input
+                    id="edit-form-no"
+                    value={displayJson.form_no || ""}
+                    onChange={(e) => handleFieldChange("form_no", e.target.value)}
+                    className="h-10 text-base font-semibold"
+                  />
+                ) : (
+                  <div className="font-semibold flex items-center">
+                    {displayJson.form_no || "N/A"}
+                    {(scan.ocr_json || {}).form_no_score !== undefined && <WarningIcon score={(scan.ocr_json || {}).form_no_score} />}
+                  </div>
+                )}
               </div>
 
               <div
                 className="bg-card border rounded p-3 cursor-pointer hover:bg-muted/50 transition-colors"
-                onMouseEnter={() => setHoveredBbox(ocrJson.ngay_bbox || null)}
+                onMouseEnter={() => setHoveredBbox((scan.ocr_json || {}).ngay_bbox || null)}
                 onMouseLeave={() => setHoveredBbox(null)}
               >
                 <div className="text-sm text-muted-foreground mb-1">{t('scan.detail.date')}</div>
-                <div className="font-semibold flex items-center">
-                  {ocrJson.ngay || "N/A"}
-                  {ocrJson.ngay_score !== undefined && <WarningIcon score={ocrJson.ngay_score} />}
-                </div>
+                {isEditing ? (
+                  <Input
+                    id="edit-ngay"
+                    value={displayJson.ngay || ""}
+                    onChange={(e) => handleFieldChange("ngay", e.target.value)}
+                    className="h-10 text-base font-semibold"
+                  />
+                ) : (
+                  <div className="font-semibold flex items-center">
+                    {displayJson.ngay || "N/A"}
+                    {(scan.ocr_json || {}).ngay_score !== undefined && <WarningIcon score={(scan.ocr_json || {}).ngay_score} />}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -210,7 +369,7 @@ export default function ScanViewer() {
                 {/* Hàng 1: Info fields - 單位 / Họ tên / Số thẻ / Chủ quản */}
                 <table
                   className="w-full border-collapse text-base hover:bg-muted/10 transition-colors cursor-pointer"
-                  onMouseEnter={(e) => { e.stopPropagation(); setHoveredBbox(ocrJson.info_bbox || tableBbox || null); }}
+                  onMouseEnter={(e) => { e.stopPropagation(); setHoveredBbox((scan.ocr_json || {}).info_bbox || tableBbox || null); }}
                   onMouseLeave={(e) => { e.stopPropagation(); setHoveredBbox(tableBbox || null); }}
                 >
                   <thead>
@@ -235,10 +394,26 @@ export default function ScanViewer() {
                   </thead>
                   <tbody>
                     <tr>
-                      <td className="border px-3 py-3 font-medium">{ocrJson.info?.don_vi || ""}</td>
-                      <td className="border px-3 py-3 font-medium">{ocrJson.info?.ho_ten || ""}</td>
-                      <td className="border px-3 py-3 font-medium">{ocrJson.info?.so_the || ""}</td>
-                      <td className="border px-3 py-3 font-medium">{ocrJson.info?.chu_quan || ""}</td>
+                      <td className="border px-3 py-3 font-medium">
+                        {isEditing ? (
+                          <Input id="edit-don-vi" value={displayJson.info?.don_vi || ""} onChange={(e) => handleInfoChange("don_vi", e.target.value)} className="h-10 text-base" />
+                        ) : (displayJson.info?.don_vi || "")}
+                      </td>
+                      <td className="border px-3 py-3 font-medium">
+                        {isEditing ? (
+                          <Input id="edit-ho-ten" value={displayJson.info?.ho_ten || ""} onChange={(e) => handleInfoChange("ho_ten", e.target.value)} className="h-10 text-base" />
+                        ) : (displayJson.info?.ho_ten || "")}
+                      </td>
+                      <td className="border px-3 py-3 font-medium">
+                        {isEditing ? (
+                          <Input id="edit-so-the" value={displayJson.info?.so_the || ""} onChange={(e) => handleInfoChange("so_the", e.target.value)} className="h-10 text-base" />
+                        ) : (displayJson.info?.so_the || "")}
+                      </td>
+                      <td className="border px-3 py-3 font-medium">
+                        {isEditing ? (
+                          <Input id="edit-chu-quan" value={displayJson.info?.chu_quan || ""} onChange={(e) => handleInfoChange("chu_quan", e.target.value)} className="h-10 text-base" />
+                        ) : (displayJson.info?.chu_quan || "")}
+                      </td>
                     </tr>
                   </tbody>
                 </table>
@@ -274,21 +449,46 @@ export default function ScanViewer() {
                     </tr>
                   </thead>
                   <tbody>
-                    {(ocrJson.line_items || []).length === 0 ? (
+                    {(displayJson.line_items || []).length === 0 ? (
                       <tr>
                         <td colSpan={6} className="border px-3 py-4 text-center text-muted-foreground italic text-xs">
                           {t('scan.detail.no_table')}
                         </td>
                       </tr>
                     ) : (
-                      (ocrJson.line_items || []).map((item: Record<string, string>, idx: number) => (
+                      (displayJson.line_items || []).map((item: Record<string, string>, idx: number) => (
                         <tr key={idx} className="hover:bg-muted/20">
                           <td className="border px-3 py-3 text-center">{idx + 1}</td>
-                          <td className="border px-3 py-3 text-center">{item.hang_muc || ""}</td>
-                          <td className="border px-3 py-3 text-center">{item.muc_dich || ""}</td>
-                          <td className="border px-3 py-3 text-center">{item.so_luong_don_gia || ""}</td>
-                          <td className="border px-3 py-3 text-center font-medium">{item.so_tien || ""}</td>
-                          <td className="border px-3 py-3 text-center">{item.so_chung_tu || ""}</td>
+                          <td className="border px-3 py-3 text-center">
+                            {isEditing ? (
+                              <Input value={item.hang_muc || ""} onChange={(e) => handleUpdateRow(idx, "hang_muc", e.target.value)} className="h-10 text-base text-center" />
+                            ) : (item.hang_muc || "")}
+                          </td>
+                          <td className="border px-3 py-3 text-center">
+                            {isEditing ? (
+                              <textarea
+                                value={item.muc_dich || ""}
+                                onChange={(e) => handleUpdateRow(idx, "muc_dich", e.target.value)}
+                                className="w-full min-h-[3rem] rounded-md border border-input bg-background px-3 py-2 text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring text-center resize-y"
+                                rows={3}
+                              />
+                            ) : (item.muc_dich || "")}
+                          </td>
+                          <td className="border px-3 py-3 text-center">
+                            {isEditing ? (
+                              <Input value={item.so_luong_don_gia || ""} onChange={(e) => handleUpdateRow(idx, "so_luong_don_gia", e.target.value)} className="h-10 text-base text-center" />
+                            ) : (item.so_luong_don_gia || "")}
+                          </td>
+                          <td className="border px-3 py-3 text-center font-medium">
+                            {isEditing ? (
+                              <Input value={item.so_tien || ""} onChange={(e) => handleUpdateRow(idx, "so_tien", e.target.value)} className="h-10 text-base text-center font-medium" />
+                            ) : (item.so_tien || "")}
+                          </td>
+                          <td className="border px-3 py-3 text-center">
+                            {isEditing ? (
+                              <Input value={item.so_chung_tu || ""} onChange={(e) => handleUpdateRow(idx, "so_chung_tu", e.target.value)} className="h-10 text-base text-center" />
+                            ) : (item.so_chung_tu || "")}
+                          </td>
                         </tr>
                       ))
                     )}
@@ -302,17 +502,38 @@ export default function ScanViewer() {
                       <td className="border px-3 py-3 w-1/4">
                         <div className="text-sm font-bold text-center">預支金額</div>
                         <div className="text-sm text-muted-foreground text-center">Số tiền tạm ứng</div>
-                        <div className="font-semibold mt-1 text-center">{ocrJson.footer?.so_tien_tam_ung || ""}</div>
+                        {isEditing ? (
+                          <Input
+                            id="edit-so-tien-tam-ung"
+                            value={displayJson.footer?.so_tien_tam_ung || ""}
+                            onChange={(e) => handleFooterChange("so_tien_tam_ung", e.target.value)}
+                            className="h-10 text-base mt-1 text-center font-semibold"
+                          />
+                        ) : (
+                          <div className="font-semibold mt-1 text-center">{displayJson.footer?.so_tien_tam_ung || ""}</div>
+                        )}
                       </td>
                       <td className="border px-3 py-3 w-1/4">
                         <div className="text-sm font-bold text-center">簽收</div>
                         <div className="text-sm text-muted-foreground text-center">Ký nhận</div>
-                        <div className="mt-1">{ocrJson.footer?.ky_nhan || ""}</div>
+                        <div className="mt-2 min-h-[3rem] flex items-center justify-center text-center">{displayJson.footer?.ky_nhan || ""}</div>
+                        <Button id="btn-sign-ky-nhan" variant="outline" size="sm" className="w-full mt-2 text-xs" disabled>
+                          <Stamp className="w-3.5 h-3.5 mr-1" /> Chèn chữ ký
+                        </Button>
                       </td>
                       <td className="border px-3 py-3 w-1/4">
                         <div className="text-sm font-bold text-center">實支</div>
                         <div className="text-sm text-muted-foreground text-center">Thực chi</div>
-                        <div className="mt-1 text-center">{ocrJson.footer?.thuc_chi || ""}</div>
+                        {isEditing ? (
+                          <Input
+                            id="edit-thuc-chi"
+                            value={displayJson.footer?.thuc_chi || ""}
+                            onChange={(e) => handleFooterChange("thuc_chi", e.target.value)}
+                            className="h-10 text-base mt-1 text-center"
+                          />
+                        ) : (
+                          <div className="mt-1 text-center">{displayJson.footer?.thuc_chi || ""}</div>
+                        )}
                       </td>
                       <td className="border px-3 py-3 w-1/4">
                         <div className="text-xs text-center">[ ] 補 Bố sung</div>
@@ -320,25 +541,37 @@ export default function ScanViewer() {
                       </td>
                     </tr>
                     <tr className="bg-muted/10">
-                      <td className="border px-3 py-3">
+                      <td className="border px-3 py-4">
                         <div className="text-sm font-bold text-center">總經理</div>
                         <div className="text-sm text-muted-foreground text-center">Tổng Giám Đốc</div>
-                        <div className="mt-1 text-center">{ocrJson.footer?.tong_giam_doc || ""}</div>
+                        <div className="mt-2 min-h-[3rem] flex items-center justify-center text-center">{displayJson.footer?.tong_giam_doc || ""}</div>
+                        <Button id="btn-sign-tgd" variant="outline" size="sm" className="w-full mt-2 text-xs" disabled>
+                          <Stamp className="w-3.5 h-3.5 mr-1" /> Chèn chữ ký
+                        </Button>
                       </td>
-                      <td className="border px-3 py-3">
+                      <td className="border px-3 py-4">
                         <div className="text-sm font-bold text-center">出納</div>
                         <div className="text-sm text-muted-foreground text-center">Thủ quỹ</div>
-                        <div className="mt-1 text-center">{ocrJson.footer?.thu_quy_1 || ""}</div>
+                        <div className="mt-2 min-h-[3rem] flex items-center justify-center text-center">{displayJson.footer?.thu_quy_1 || ""}</div>
+                        <Button id="btn-sign-tq1" variant="outline" size="sm" className="w-full mt-2 text-xs" disabled>
+                          <Stamp className="w-3.5 h-3.5 mr-1" /> Chèn chữ ký
+                        </Button>
                       </td>
-                      <td className="border px-3 py-3">
+                      <td className="border px-3 py-4">
                         <div className="text-sm font-bold text-center">會計</div>
                         <div className="text-sm text-muted-foreground text-center">Kế toán</div>
-                        <div className="mt-1 text-center">{ocrJson.footer?.ke_toan || ""}</div>
+                        <div className="mt-2 min-h-[3rem] flex items-center justify-center text-center">{displayJson.footer?.ke_toan || ""}</div>
+                        <Button id="btn-sign-kt" variant="outline" size="sm" className="w-full mt-2 text-xs" disabled>
+                          <Stamp className="w-3.5 h-3.5 mr-1" /> Chèn chữ ký
+                        </Button>
                       </td>
-                      <td className="border px-3 py-3">
+                      <td className="border px-3 py-4">
                         <div className="text-sm font-bold text-center">出納</div>
                         <div className="text-sm text-muted-foreground text-center">Thủ quỹ</div>
-                        <div className="mt-1 text-center">{ocrJson.footer?.thu_quy_2 || ""}</div>
+                        <div className="mt-2 min-h-[3rem] flex items-center justify-center text-center">{displayJson.footer?.thu_quy_2 || ""}</div>
+                        <Button id="btn-sign-tq2" variant="outline" size="sm" className="w-full mt-2 text-xs" disabled>
+                          <Stamp className="w-3.5 h-3.5 mr-1" /> Chèn chữ ký
+                        </Button>
                       </td>
                     </tr>
                   </tbody>
