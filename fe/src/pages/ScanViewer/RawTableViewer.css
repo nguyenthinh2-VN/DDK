@@ -1,0 +1,51 @@
+/* RawTableViewer.css - Style cho bảng HTML thô từ PaddleOCR */
+
+.raw-table-wrapper {
+  width: 100%;
+}
+
+.raw-table-content table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+
+.raw-table-content td,
+.raw-table-content th {
+  border: 1px solid hsl(var(--border));
+  padding: 8px 10px;
+  vertical-align: top;
+  text-align: center;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+
+/* Hàng header (hàng đầu và hàng 2) */
+.raw-table-content tr:nth-child(1) td,
+.raw-table-content tr:nth-child(2) td {
+  background-color: hsl(var(--muted) / 0.3);
+  font-weight: 600;
+}
+
+/* Hàng dữ liệu */
+.raw-table-content tr:nth-child(n+3) td {
+  background-color: transparent;
+}
+
+/* Hover row highlight */
+.raw-table-content tr:hover td {
+  background-color: hsl(var(--muted) / 0.2);
+}
+
+/* Hàng footer (dòng cuối trước dòng ký) */
+.raw-table-content tr:nth-last-child(2) td {
+  background-color: hsl(var(--muted) / 0.15);
+}
+
+/* Dòng chữ ký (dòng cuối cùng) */
+.raw-table-content tr:last-child td {
+  background-color: hsl(var(--muted) / 0.1);
+  min-height: 48px;
+  height: 60px;
+}

@@ -6,11 +6,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { AlertCircle, Pencil, Save, X, Stamp, Ban, CheckCircle2, Trash2 } from "lucide-react";
+import { AlertCircle, Pencil, Save, X, Ban, Plus, Trash2, Download } from "lucide-react";
 import axiosClient from "../../api/axiosClient";
 import { useTranslation } from "../../hooks/useTranslation";
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import RawTableViewer from "./RawTableViewer";
+import SigningPanel from "./SigningPanel";
 import "./ScanViewer.css";
 
 const getFileUrl = (filePath?: string) => {
@@ -84,7 +86,6 @@ export default function ScanViewer() {
       }
     });
     observer.observe(imgRef.current);
-    observer.observe(imgRef.current);
     return () => observer.disconnect();
   }, [scan]);
 
@@ -120,7 +121,6 @@ export default function ScanViewer() {
 
   const handleStartEdit = () => {
     if (!scan) return;
-    // Deep clone ocr_json để không mutate trực tiếp state gốc
     setEditedJson(JSON.parse(JSON.stringify(scan.ocr_json || {})));
     setIsEditing(true);
     setSaveMessage(null);
@@ -132,53 +132,27 @@ export default function ScanViewer() {
     setSaveMessage(null);
   };
 
-  // Cập nhật field cấp 1 (form_no, ngay)
-  const handleFieldChange = (field: string, value: string) => {
+  const handleFieldChange = (field: string, value: string | any) => {
     setEditedJson((prev: Record<string, unknown>) => ({ ...prev, [field]: value }));
   };
 
-  // Cập nhật field trong info object (don_vi, ho_ten, so_the, chu_quan)
-  const handleInfoChange = (field: string, value: string) => {
-    setEditedJson((prev: Record<string, unknown>) => ({
-      ...prev,
-      info: { ...(prev.info as Record<string, string>), [field]: value },
-    }));
-  };
-
-  // Cập nhật field trong footer object
-  const handleFooterChange = (field: string, value: string) => {
-    setEditedJson((prev: Record<string, unknown>) => ({
-      ...prev,
-      footer: { ...(prev.footer as Record<string, string>), [field]: value },
-    }));
-  };
-
-  // Cập nhật một ô trong line_items (mở rộng: index + field)
-  const handleUpdateRow = (index: number, field: string, value: string) => {
-    setEditedJson((prev: Record<string, unknown>) => {
-      const items = [...((prev.line_items as Record<string, string>[]) || [])];
-      items[index] = { ...items[index], [field]: value };
-      return { ...prev, line_items: items };
+  const handleAddLineItem = () => {
+    const newItems = [...(editedJson?.line_items || [])];
+    newItems.push({
+      hang_muc: "",
+      muc_dich: "",
+      so_luong_don_gia: "",
+      so_tien: "",
+      so_chung_tu: ""
     });
+    handleFieldChange("line_items", newItems);
   };
 
-  // Hàm mở rộng - thêm dòng mới (chưa hiển thị nút nhưng logic đã sẵn sàng)
-  // const handleAddRow = () => {
-  //   setEditedJson((prev: Record<string, unknown>) => {
-  //     const items = [...((prev.line_items as Record<string, string>[]) || [])];
-  //     items.push({ hang_muc: "", muc_dich: "", so_luong_don_gia: "", so_tien: "", so_chung_tu: "" });
-  //     return { ...prev, line_items: items };
-  //   });
-  // };
-
-  // Hàm mở rộng - xóa dòng (chưa hiển thị nút nhưng logic đã sẵn sàng)
-  // const handleDeleteRow = (index: number) => {
-  //   setEditedJson((prev: Record<string, unknown>) => {
-  //     const items = [...((prev.line_items as Record<string, string>[]) || [])];
-  //     items.splice(index, 1);
-  //     return { ...prev, line_items: items };
-  //   });
-  // };
+  const handleRemoveLineItem = (idx: number) => {
+    const newItems = [...(editedJson?.line_items || [])];
+    newItems.splice(idx, 1);
+    handleFieldChange("line_items", newItems);
+  };
 
   const handleSave = async () => {
     if (!scan || !editedJson) return;
@@ -192,13 +166,35 @@ export default function ScanViewer() {
       setIsEditing(false);
       setEditedJson(null);
       setSaveMessage({ type: "success", text: t("scan.detail.save_success") });
-      // Tự động ẩn thông báo thành công sau 3 giây
       setTimeout(() => setSaveMessage(null), 3000);
     } catch (error) {
       console.error("Failed to save OCR JSON", error);
       setSaveMessage({ type: "error", text: t("scan.detail.save_fail") });
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleDownloadPdf = async () => {
+    if (!scan) return;
+    try {
+      const response = await axiosClient.get(`/api/scan/${scan.id}/export-pdf`, {
+        responseType: 'blob',
+      });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `PhieuTamUng_${scan.form_no || scan.id.substring(0, 6)}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode?.removeChild(link);
+    } catch (error) {
+      console.error("Failed to download PDF", error);
+      toast({
+        title: "Lỗi tải xuống",
+        description: "Không thể xuất PDF. Vui lòng thử lại.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -296,53 +292,23 @@ export default function ScanViewer() {
     }
   };
 
-
-
-  const renderSignature = (roleName: string, fallbackName: string) => {
-    if (!scan || !scan.approvals) return fallbackName;
-    const approval = scan.approvals.find((a: any) => a.role === roleName && (a.action === "APPROVED" || a.action === "DRAFT"));
-    if (approval && approval.signature) {
-      const url = getFileUrl(approval.signature.processed_file_path);
-      return (
-        <div className="relative">
-          <img src={url} alt="Signature" className="max-h-12 object-contain mx-auto" />
-          {approval.action === "DRAFT" && (
-            <span className="absolute -top-3 -right-3 text-[9px] bg-yellow-100 text-yellow-800 border border-yellow-200 px-1 py-0.5 rounded">Nháp</span>
-          )}
-        </div>
-      );
-    }
-    return fallbackName;
-  };
-
-  const hasDraftSignature = (roleName: string) => {
-    if (!scan || !scan.approvals) return false;
-    return !!scan.approvals.find((a: any) => a.role === roleName && a.action === "DRAFT");
-  };
-
   // ── Render ──────────────────────────────────────────
 
   if (loading) return <div className="p-8">{t('dashboard.table.loading')}</div>;
   if (!scan) return <div className="p-8">{t('scan.detail.not_found')}</div>;
 
-  // Dữ liệu hiển thị: nếu đang edit thì dùng editedJson, nếu không thì dùng ocr_json gốc
   const displayJson = isEditing ? editedJson : (scan.ocr_json || {});
-  const tableBbox = (scan.ocr_json || {}).table_bbox;
-  const tableScore = (scan.ocr_json || {}).table_score;
   const bboxImageUrl = (scan.ocr_json || {}).bbox_image_url;
 
-  // Calculate scaled box coordinates
-  // box = [x_min, y_min, x_max, y_max]
+  const scaleX = imgRenderSize.w / imgNaturalSize.w;
+  const scaleY = imgRenderSize.h / imgNaturalSize.h;
+
   const renderBbox = (box: number[] | null) => {
     if (!box) return null;
-    const scaleX = imgRenderSize.w / imgNaturalSize.w;
-    const scaleY = imgRenderSize.h / imgNaturalSize.h;
-
     const left = box[0] * scaleX;
     const top = box[1] * scaleY;
     const width = (box[2] - box[0]) * scaleX;
     const height = (box[3] - box[1]) * scaleY;
-
     return (
       <div
         className="absolute border-2 border-primary bg-primary/20 pointer-events-none transition-all duration-200"
@@ -351,7 +317,6 @@ export default function ScanViewer() {
     );
   };
 
-  // Use bbox_image_url for Paddle layout image if available, else original image
   const defaultImageUrl = getFileUrl(scan.image_path);
   const paddleBboxUrl = bboxImageUrl ? getFileUrl(bboxImageUrl) : defaultImageUrl;
   const wfStatus = scan.workflow_status || "DRAFT";
@@ -363,6 +328,9 @@ export default function ScanViewer() {
     if (s === "PROCESSING" || s === "PENDING" || s === "DRAFT" || s.startsWith("PENDING_")) return "bg-yellow-500 hover:bg-yellow-600 text-white border-transparent text-gray-900";
     return "bg-gray-500 hover:bg-gray-600 text-white border-transparent";
   };
+
+  // suppress unused warning - activeSignRole used by handleStartSigning
+  void activeSignRole;
 
   return (
     <div className="flex flex-col h-[calc(100vh-8rem)] overflow-hidden">
@@ -438,6 +406,16 @@ export default function ScanViewer() {
                     <Ban className="w-3.5 h-3.5 mr-1.5" /> Từ chối
                   </Button>
                 )}
+                {wfStatus === "COMPLETED" && (
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={handleDownloadPdf}
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    <Download className="w-3.5 h-3.5 mr-1.5" /> Tải PDF
+                  </Button>
+                )}
                 {!isEditing ? (
                   <Button
                     id="btn-edit-ocr"
@@ -475,7 +453,7 @@ export default function ScanViewer() {
               </div>
             </div>
           </CardHeader>
-          <CardContent className="flex-1 overflow-auto p-4 space-y-4">
+          <CardContent className="flex-1 overflow-auto p-4 space-y-3">
 
             {/* Header: Số phiếu + Ngày */}
             <div className="grid grid-cols-2 gap-3">
@@ -522,292 +500,133 @@ export default function ScanViewer() {
               </div>
             </div>
 
-            {/* Bảng chi tiết phiếu - thiết kế giống mẫu gốc */}
-            <div
-              className="border rounded-md overflow-hidden"
-              onMouseEnter={() => setHoveredBbox(tableBbox || null)}
-              onMouseLeave={() => setHoveredBbox(null)}
-            >
+            {/* Bảng OCR thô từ PaddleOCR - dùng trực tiếp html_content */}
+            <div className="border rounded-md overflow-hidden">
               <div className="flex items-center justify-between px-3 py-2 bg-muted/40 border-b">
-                <h3 className="text-sm font-semibold flex items-center gap-1">
-                  {t('scan.detail.table')}
-                  <WarningIcon score={tableScore} />
-                </h3>
+                <h3 className="text-sm font-semibold">{t('scan.detail.table')}</h3>
               </div>
-
-              <div className="overflow-x-auto">
-                {/* Hàng 1: Info fields - 單位 / Họ tên / Số thẻ / Chủ quản */}
-                <table
-                  className="w-full border-collapse text-base hover:bg-muted/10 transition-colors cursor-pointer"
-                  onMouseEnter={(e) => { e.stopPropagation(); setHoveredBbox((scan.ocr_json || {}).info_bbox || tableBbox || null); }}
-                  onMouseLeave={(e) => { e.stopPropagation(); setHoveredBbox(tableBbox || null); }}
-                >
-                  <thead>
-                    <tr className="bg-muted/20">
-                      <th className="border px-3 py-2 text-left w-1/4">
-                        <div className="font-bold text-sm text-center">單位</div>
-                        <div className="text-sm text-muted-foreground text-center">Đơn vị:</div>
-                      </th>
-                      <th className="border px-3 py-2 text-left w-1/4">
-                        <div className="font-bold text-sm text-center">姓名</div>
-                        <div className="text-sm text-muted-foreground text-center">Họ tên:</div>
-                      </th>
-                      <th className="border px-3 py-2 text-left w-1/4">
-                        <div className="font-bold text-sm text-center">卡號</div>
-                        <div className="text-sm text-muted-foreground text-center">Số thẻ:</div>
-                      </th>
-                      <th className="border px-3 py-2 text-left w-1/4">
-                        <div className="font-bold text-sm text-center">主管</div>
-                        <div className="text-sm text-muted-foreground text-center">Chủ quản:</div>
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td className="border px-3 py-3 font-medium">
-                        {isEditing ? (
-                          <Input id="edit-don-vi" value={displayJson.info?.don_vi || ""} onChange={(e) => handleInfoChange("don_vi", e.target.value)} className="h-10 text-base" />
-                        ) : (displayJson.info?.don_vi || "")}
-                      </td>
-                      <td className="border px-3 py-3 font-medium">
-                        {isEditing ? (
-                          <Input id="edit-ho-ten" value={displayJson.info?.ho_ten || ""} onChange={(e) => handleInfoChange("ho_ten", e.target.value)} className="h-10 text-base" />
-                        ) : (displayJson.info?.ho_ten || "")}
-                      </td>
-                      <td className="border px-3 py-3 font-medium">
-                        {isEditing ? (
-                          <Input id="edit-so-the" value={displayJson.info?.so_the || ""} onChange={(e) => handleInfoChange("so_the", e.target.value)} className="h-10 text-base" />
-                        ) : (displayJson.info?.so_the || "")}
-                      </td>
-                      <td className="border px-3 py-3 font-medium">
-                        {isEditing ? (
-                          <Input id="edit-chu-quan" value={displayJson.info?.chu_quan || ""} onChange={(e) => handleInfoChange("chu_quan", e.target.value)} className="h-10 text-base" />
-                        ) : (displayJson.info?.chu_quan || "")}
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-
-                {/* Line items table */}
-                <table className="w-full border-collapse text-base">
-                  <thead>
-                    <tr className="bg-muted/20">
-                      <th className="border px-3 py-2 text-center w-10">
-                        <div className="font-bold text-sm">序號</div>
-                        <div className="text-sm text-muted-foreground">STT</div>
-                      </th>
-                      <th className="border px-3 py-2 text-center">
-                        <div className="font-bold text-sm">項目</div>
-                        <div className="text-sm text-muted-foreground">Hạng mục</div>
-                      </th>
-                      <th className="border px-3 py-2 text-center">
-                        <div className="font-bold text-sm">用途說明</div>
-                        <div className="text-sm text-muted-foreground">Mục đích sử dụng</div>
-                      </th>
-                      <th className="border px-3 py-2 text-center">
-                        <div className="font-bold text-sm">數量單價</div>
-                        <div className="text-sm text-muted-foreground">Số lượng x Đơn giá</div>
-                      </th>
-                      <th className="border px-3 py-2 text-center">
-                        <div className="font-bold text-sm">金額</div>
-                        <div className="text-sm text-muted-foreground">Số tiền</div>
-                      </th>
-                      <th className="border px-3 py-2 text-center">
-                        <div className="font-bold text-sm">單據號碼</div>
-                        <div className="text-sm text-muted-foreground">Số chứng từ</div>
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(displayJson.line_items || []).length === 0 ? (
-                      <tr>
-                        <td colSpan={6} className="border px-3 py-4 text-center text-muted-foreground italic text-xs">
-                          {t('scan.detail.no_table')}
-                        </td>
-                      </tr>
-                    ) : (
-                      (displayJson.line_items || []).map((item: Record<string, string>, idx: number) => (
-                        <tr key={idx} className="hover:bg-muted/20">
-                          <td className="border px-3 py-3 text-center">{idx + 1}</td>
-                          <td className="border px-3 py-3 text-center">
-                            {isEditing ? (
-                              <Input value={item.hang_muc || ""} onChange={(e) => handleUpdateRow(idx, "hang_muc", e.target.value)} className="h-10 text-base text-center" />
-                            ) : (item.hang_muc || "")}
-                          </td>
-                          <td className="border px-3 py-3 text-center">
-                            {isEditing ? (
-                              <textarea
-                                value={item.muc_dich || ""}
-                                onChange={(e) => handleUpdateRow(idx, "muc_dich", e.target.value)}
-                                className="w-full min-h-[3rem] rounded-md border border-input bg-background px-3 py-2 text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring text-center resize-y"
-                                rows={3}
-                              />
-                            ) : (item.muc_dich || "")}
-                          </td>
-                          <td className="border px-3 py-3 text-center">
-                            {isEditing ? (
-                              <Input value={item.so_luong_don_gia || ""} onChange={(e) => handleUpdateRow(idx, "so_luong_don_gia", e.target.value)} className="h-10 text-base text-center" />
-                            ) : (item.so_luong_don_gia || "")}
-                          </td>
-                          <td className="border px-3 py-3 text-center font-medium">
-                            {isEditing ? (
-                              <Input value={item.so_tien || ""} onChange={(e) => handleUpdateRow(idx, "so_tien", e.target.value)} className="h-10 text-base text-center font-medium" />
-                            ) : (item.so_tien || "")}
-                          </td>
-                          <td className="border px-3 py-3 text-center">
-                            {isEditing ? (
-                              <Input value={item.so_chung_tu || ""} onChange={(e) => handleUpdateRow(idx, "so_chung_tu", e.target.value)} className="h-10 text-base text-center" />
-                            ) : (item.so_chung_tu || "")}
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-
-                {/* Footer rows */}
-                <table className="w-full border-collapse text-base">
-                  <tbody>
-                    <tr className="bg-muted/10">
-                      <td className="border px-3 py-3 w-1/4">
-                        <div className="text-sm font-bold text-center">預支金額</div>
-                        <div className="text-sm text-muted-foreground text-center">Số tiền tạm ứng</div>
-                        {isEditing ? (
-                          <Input
-                            id="edit-so-tien-tam-ung"
-                            value={displayJson.footer?.so_tien_tam_ung || ""}
-                            onChange={(e) => handleFooterChange("so_tien_tam_ung", e.target.value)}
-                            className="h-10 text-base mt-1 text-center font-semibold"
+              {isEditing ? (
+                <div className="p-4 space-y-4 bg-muted/10">
+                  <h4 className="font-medium text-sm">Hạng mục (Line Items)</h4>
+                  {editedJson.line_items?.map((item: any, idx: number) => (
+                    <div key={idx} className="p-3 border rounded bg-background shadow-sm">
+                      <div className="font-semibold text-sm mb-3 text-primary border-b pb-2 flex items-center justify-between">
+                        <span>Hạng mục {idx + 1}</span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                          onClick={() => handleRemoveLineItem(idx)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-xs text-muted-foreground font-medium">Hạng mục</label>
+                          <textarea
+                            className="w-full text-sm border rounded p-1 min-h-[40px]"
+                            value={item.hang_muc || ""}
+                            onChange={(e) => {
+                              const newItems = [...editedJson.line_items];
+                              newItems[idx].hang_muc = e.target.value;
+                              handleFieldChange("line_items", newItems);
+                            }}
                           />
-                        ) : (
-                          <div className="font-semibold mt-1 text-center">{displayJson.footer?.so_tien_tam_ung || ""}</div>
-                        )}
-                      </td>
-                      <td className="border px-3 py-3 w-1/4">
-                        <div className="text-sm font-bold text-center">簽收</div>
-                        <div className="text-sm text-muted-foreground text-center">Ký nhận</div>
-                        <div className="mt-2 min-h-[3rem] flex items-center justify-center text-center">{renderSignature("EMPLOYEE", displayJson.footer?.ky_nhan || "")}</div>
-                        {hasDraftSignature("EMPLOYEE") ? (
-                          <div className="flex gap-1 mt-2">
-                            <Button variant="outline" size="sm" className="w-1/2 text-xs px-1 text-red-600" onClick={handleRemoveDraftSignature} disabled={wfStatus !== "DRAFT" || user?.role !== "EMPLOYEE"}>
-                              <Trash2 className="w-3 h-3 mr-1" /> Xóa
-                            </Button>
-                            <Button size="sm" className="w-1/2 text-xs px-1" onClick={handleApprove} disabled={wfStatus !== "DRAFT" || user?.role !== "EMPLOYEE"}>
-                              <CheckCircle2 className="w-3 h-3 mr-1" /> Trình
-                            </Button>
-                          </div>
-                        ) : (
-                          <Button variant="outline" size="sm" className="w-full mt-2 text-xs" onClick={() => handleStartSigning("EMPLOYEE")} disabled={wfStatus !== "DRAFT" || user?.role !== "EMPLOYEE"}>
-                            <Stamp className="w-3.5 h-3.5 mr-1" /> Ký (Trình)
-                          </Button>
-                        )}
-                      </td>
-                      <td className="border px-3 py-3 w-1/4">
-                        <div className="text-sm font-bold text-center">實支</div>
-                        <div className="text-sm text-muted-foreground text-center">Thực chi</div>
-                        {isEditing ? (
-                          <Input
-                            id="edit-thuc-chi"
-                            value={displayJson.footer?.thuc_chi || ""}
-                            onChange={(e) => handleFooterChange("thuc_chi", e.target.value)}
-                            className="h-10 text-base mt-1 text-center"
+                        </div>
+                        <div>
+                          <label className="text-xs text-muted-foreground">Mục đích</label>
+                          <textarea
+                            className="w-full text-sm border rounded p-1 min-h-[40px]"
+                            value={item.muc_dich || ""}
+                            onChange={(e) => {
+                              const newItems = [...editedJson.line_items];
+                              newItems[idx].muc_dich = e.target.value;
+                              handleFieldChange("line_items", newItems);
+                            }}
                           />
-                        ) : (
-                          <div className="mt-1 text-center">{displayJson.footer?.thuc_chi || ""}</div>
-                        )}
-                      </td>
-                      <td className="border px-3 py-3 w-1/4">
-                        <div className="text-xs text-center">[ ] 補 Bố sung</div>
-                        <div className="text-xs text-center">[ ] 退 Trả lại</div>
-                      </td>
-                    </tr>
-                    <tr className="bg-muted/10">
-                      <td className="border px-3 py-4">
-                        <div className="text-sm font-bold text-center">總經理</div>
-                        <div className="text-sm text-muted-foreground text-center">Tổng Giám Đốc</div>
-                        <div className="mt-2 min-h-[3rem] flex items-center justify-center text-center">{renderSignature("CEO", displayJson.footer?.tong_giam_doc || "")}</div>
-                        {hasDraftSignature("CEO") ? (
-                          <div className="flex gap-1 mt-2">
-                            <Button variant="outline" size="sm" className="w-1/2 text-xs px-1 text-red-600" onClick={handleRemoveDraftSignature} disabled={wfStatus !== "PENDING_CEO" || user?.role !== "CEO"}>
-                              <Trash2 className="w-3 h-3 mr-1" /> Xóa
-                            </Button>
-                            <Button size="sm" className="w-1/2 text-xs px-1" onClick={handleApprove} disabled={wfStatus !== "PENDING_CEO" || user?.role !== "CEO"}>
-                              <CheckCircle2 className="w-3 h-3 mr-1" /> Khóa
-                            </Button>
-                          </div>
-                        ) : (
-                          <Button variant="outline" size="sm" className="w-full mt-2 text-xs" onClick={() => handleStartSigning("CEO")} disabled={wfStatus !== "PENDING_CEO" || user?.role !== "CEO"}>
-                            <Stamp className="w-3.5 h-3.5 mr-1" /> Ký duyệt
-                          </Button>
-                        )}
-                      </td>
-                      <td className="border px-3 py-4">
-                        <div className="text-sm font-bold text-center">出納</div>
-                        <div className="text-sm text-muted-foreground text-center">Thủ quỹ</div>
-                        <div className="mt-2 min-h-[3rem] flex items-center justify-center text-center">{renderSignature("TREASURY", displayJson.footer?.thu_quy_1 || "")}</div>
-                        {hasDraftSignature("TREASURY") ? (
-                          <div className="flex gap-1 mt-2">
-                            <Button variant="outline" size="sm" className="w-1/2 text-xs px-1 text-red-600" onClick={handleRemoveDraftSignature} disabled={wfStatus !== "PENDING_TREASURY" || user?.role !== "TREASURY"}>
-                              <Trash2 className="w-3 h-3 mr-1" /> Xóa
-                            </Button>
-                            <Button size="sm" className="w-1/2 text-xs px-1" onClick={handleApprove} disabled={wfStatus !== "PENDING_TREASURY" || user?.role !== "TREASURY"}>
-                              <CheckCircle2 className="w-3 h-3 mr-1" /> Khóa
-                            </Button>
-                          </div>
-                        ) : (
-                          <Button variant="outline" size="sm" className="w-full mt-2 text-xs" onClick={() => handleStartSigning("TREASURY")} disabled={wfStatus !== "PENDING_TREASURY" || user?.role !== "TREASURY"}>
-                            <Stamp className="w-3.5 h-3.5 mr-1" /> Ký duyệt
-                          </Button>
-                        )}
-                      </td>
-                      <td className="border px-3 py-4">
-                        <div className="text-sm font-bold text-center">會計</div>
-                        <div className="text-sm text-muted-foreground text-center">Kế toán</div>
-                        <div className="mt-2 min-h-[3rem] flex items-center justify-center text-center">{renderSignature("ACCOUNTING", displayJson.footer?.ke_toan || "")}</div>
-                        {hasDraftSignature("ACCOUNTING") ? (
-                          <div className="flex gap-1 mt-2">
-                            <Button variant="outline" size="sm" className="w-1/2 text-xs px-1 text-red-600" onClick={handleRemoveDraftSignature} disabled={wfStatus !== "PENDING_ACCOUNTING" || user?.role !== "ACCOUNTING"}>
-                              <Trash2 className="w-3 h-3 mr-1" /> Xóa
-                            </Button>
-                            <Button size="sm" className="w-1/2 text-xs px-1" onClick={handleApprove} disabled={wfStatus !== "PENDING_ACCOUNTING" || user?.role !== "ACCOUNTING"}>
-                              <CheckCircle2 className="w-3 h-3 mr-1" /> Khóa
-                            </Button>
-                          </div>
-                        ) : (
-                          <Button variant="outline" size="sm" className="w-full mt-2 text-xs" onClick={() => handleStartSigning("ACCOUNTING")} disabled={wfStatus !== "PENDING_ACCOUNTING" || user?.role !== "ACCOUNTING"}>
-                            <Stamp className="w-3.5 h-3.5 mr-1" /> Ký duyệt
-                          </Button>
-                        )}
-                      </td>
-                      <td className="border px-3 py-4">
-                        <div className="text-sm font-bold text-center">出納</div>
-                        <div className="text-sm text-muted-foreground text-center">Thủ quỹ (Phụ)</div>
-                        <div className="mt-2 min-h-[3rem] flex items-center justify-center text-center">{renderSignature("SUB_TREASURY", displayJson.footer?.thu_quy_2 || "")}</div>
-                        {hasDraftSignature("SUB_TREASURY") ? (
-                          <div className="flex gap-1 mt-2">
-                            <Button variant="outline" size="sm" className="w-1/2 text-xs px-1 text-red-600" onClick={handleRemoveDraftSignature} disabled={wfStatus !== "PENDING_SUB_TREASURY" || user?.role !== "SUB_TREASURY"}>
-                              <Trash2 className="w-3 h-3 mr-1" /> Xóa
-                            </Button>
-                            <Button size="sm" className="w-1/2 text-xs px-1" onClick={handleApprove} disabled={wfStatus !== "PENDING_SUB_TREASURY" || user?.role !== "SUB_TREASURY"}>
-                              <CheckCircle2 className="w-3 h-3 mr-1" /> Khóa
-                            </Button>
-                          </div>
-                        ) : (
-                          <Button variant="outline" size="sm" className="w-full mt-2 text-xs" onClick={() => handleStartSigning("SUB_TREASURY")} disabled={wfStatus !== "PENDING_SUB_TREASURY" || user?.role !== "SUB_TREASURY"}>
-                            <Stamp className="w-3.5 h-3.5 mr-1" /> (Phụ)
-                          </Button>
-                        )}
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
+                        </div>
+                        <div>
+                          <label className="text-xs text-muted-foreground">Số lượng / Đơn giá</label>
+                          <textarea
+                            className="w-full text-sm border rounded p-1 min-h-[40px]"
+                            value={item.so_luong_don_gia || ""}
+                            onChange={(e) => {
+                              const newItems = [...editedJson.line_items];
+                              newItems[idx].so_luong_don_gia = e.target.value;
+                              handleFieldChange("line_items", newItems);
+                            }}
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs text-muted-foreground">Số tiền</label>
+                          <textarea
+                            className="w-full text-sm border rounded p-1 min-h-[40px]"
+                            value={item.so_tien || ""}
+                            onChange={(e) => {
+                              const newItems = [...editedJson.line_items];
+                              newItems[idx].so_tien = e.target.value;
+                              handleFieldChange("line_items", newItems);
+                            }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  
+                  <div className="flex justify-center mt-2">
+                    <Button variant="outline" size="sm" onClick={handleAddLineItem} className="w-full border-dashed">
+                      <Plus className="w-4 h-4 mr-2" /> Thêm hạng mục
+                    </Button>
+                  </div>
+
+                  <h4 className="font-medium text-sm mt-4">Tổng kết (Footer)</h4>
+                  <div className="grid grid-cols-2 gap-2 p-3 border rounded bg-background">
+                    <div>
+                      <label className="text-xs text-muted-foreground">Số tiền tạm ứng</label>
+                      <Input
+                        className="h-8 text-sm"
+                        value={editedJson.footer?.so_tien_tam_ung || ""}
+                        onChange={(e) => {
+                          const newFooter = { ...(editedJson.footer || {}), so_tien_tam_ung: e.target.value };
+                          handleFieldChange("footer", newFooter);
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground">Thực chi</label>
+                      <Input
+                        className="h-8 text-sm"
+                        value={editedJson.footer?.thuc_chi || ""}
+                        onChange={(e) => {
+                          const newFooter = { ...(editedJson.footer || {}), thuc_chi: e.target.value };
+                          handleFieldChange("footer", newFooter);
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <RawTableViewer htmlContent={scan.html_content} />
+              )}
             </div>
+
+            {/* Panel ký duyệt tách biệt */}
+            <SigningPanel
+              wfStatus={wfStatus}
+              userRole={user?.role}
+              approvals={scan.approvals || []}
+              onSign={handleStartSigning}
+              onApprove={handleApprove}
+              onRemoveDraft={handleRemoveDraftSignature}
+              getFileUrl={getFileUrl}
+            />
 
           </CardContent>
         </Card>
       </div>
 
+      {/* Dialog từ chối */}
       <Dialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
         <DialogContent>
           <DialogHeader>
@@ -828,6 +647,7 @@ export default function ScanViewer() {
         </DialogContent>
       </Dialog>
 
+      {/* Dialog chọn chữ ký */}
       <Dialog open={showSignatureSelector} onOpenChange={setShowSignatureSelector}>
         <DialogContent>
           <DialogHeader>

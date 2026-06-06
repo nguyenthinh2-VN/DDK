@@ -1,4 +1,4 @@
-import os
+
 import sys
 import json
 import requests
@@ -21,18 +21,6 @@ def run_debug(image_path: str):
     
     print(f"--- BẮT ĐẦU DEBUG: {image_path} ---")
     
-    # 1. Tiền xử lý (tăng chất lượng ảnh)
-    print("1. Chạy tiền xử lý ảnh (OpenCV)...")
-    try:
-        img = load_image(image_path)
-        gray = preprocess(img)
-        processed_path = debug_dir / "preprocessed.jpg"
-        cv2.imwrite(str(processed_path), gray)
-        print(f"   -> Đã lưu ảnh sau tiền xử lý tại: {processed_path}")
-    except Exception as e:
-        print(f"   -> Lỗi tiền xử lý: {e}")
-        return
-
     # 2. Gọi PaddleOCR-VL Sync API
     print("2. Gọi PaddleOCR-VL Sync API...")
     token = settings.PADDLEOCR_VL_TOKEN
@@ -43,7 +31,7 @@ def run_debug(image_path: str):
     try:
         from app.ocr.paddleocr_vl_client import call_sync
         url = settings.PADDLEOCR_VL_SYNC_URL
-        sync_result = call_sync(str(processed_path), token=token, url=url)
+        sync_result = call_sync(str(image_path), token=token, url=url)
         with open(debug_dir / "raw_result.json", "w", encoding="utf-8") as f:
             json.dump(sync_result, f, ensure_ascii=False, indent=2)
         print(f"   -> Đã lưu raw JSON tại: {debug_dir / 'raw_result.json'}")
@@ -76,7 +64,7 @@ def run_debug(image_path: str):
         print("   -> Đang thử dùng API Async (để chắc chắn lấy được ảnh bbox)...")
         from app.ocr.paddleocr_vl_client import submit_job, poll_job, download_jsonl
         try:
-            job_id = submit_job(str(processed_path), token=token)
+            job_id = submit_job(str(image_path), token=token)
             print(f"   -> Đã submit Async Job: {job_id}")
             data = poll_job(job_id, token=token)
             jsonl_url = (data.get("resultUrl") or {}).get("jsonUrl")

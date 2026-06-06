@@ -19,7 +19,8 @@ from app.models.scan_batch import ScanBatch
 from app.models.scan_result import ScanResult
 from app.repositories.scan_batch_repository import ScanBatchRepository
 from app.repositories.scan_repository import ScanRepository
-from app.utils.ocr_engine import run_ocr
+from app.utils.ocr_engine_sync import run_ocr_sync
+from app.utils.ocr_engine_async import run_ocr_async
 
 
 class OCRService:
@@ -98,9 +99,9 @@ class OCRService:
         )
         await scan_repo.create(scan)
         
-        # 2. Gọi OCR (đồng bộ)
+        # 2. Xử lý
         try:
-            result = run_ocr(scan.image_path, scan.original_filename)
+            result = run_ocr_sync(image_path, original_filename)
 
             scan.ocr_text = result.get("ocr_text")
             scan.ocr_json = result.get("ocr_json")
@@ -117,6 +118,7 @@ class OCRService:
         # 3. Cập nhật và trả về
         await scan_repo.update(scan)
         await db.commit()
+        await db.refresh(scan, ["approvals"])
         return scan
 
     # ── Background worker (session RIÊNG) ────────────
@@ -155,7 +157,7 @@ class OCRService:
             
             async def _run_ocr_async(img_path, original_name):
                 # chạy hàm blocking (chứa request đồng bộ) trong thread pool
-                return await asyncio.to_thread(run_ocr, img_path, original_name)
+                return await asyncio.to_thread(run_ocr_async, img_path, original_name)
             
             # Gửi song song tất cả các request
             tasks = [_run_ocr_async(scan.image_path, scan.original_filename) for scan in scans]

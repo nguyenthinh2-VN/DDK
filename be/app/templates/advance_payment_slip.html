@@ -1,70 +1,83 @@
 <!DOCTYPE html>
 <html>
+
 <head>
-<meta charset="utf-8">
-<style>
-  body { font-family: 'Microsoft JhengHei', 'Noto Sans TC', 'Noto Sans CJK TC', sans-serif; }
-  table { width: 100%; border-collapse: collapse; margin: auto; word-wrap: break-word; }
-  td, th { border: 1px solid #333; padding: 6px 10px; text-align: center; vertical-align: middle; }
-  th { background-color: #f0f0f0; }
-  .header-row td { font-weight: bold; }
-</style>
+  <meta charset="utf-8">
+  <style>
+    body {
+      font-family: 'Microsoft JhengHei', 'Noto Sans TC', 'Noto Sans CJK TC', sans-serif;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: auto;
+      word-wrap: break-word;
+    }
+
+    td,
+    th {
+      border: 1px solid #333;
+      padding: 6px 10px;
+      text-align: center;
+      vertical-align: middle;
+    }
+
+    th {
+      background-color: #f0f0f0;
+    }
+
+    .header-row td {
+      font-weight: bold;
+    }
+  </style>
 </head>
+
 <body>
-<table>
-  {# Hàng 1: Thông tin phiếu (Info) #}
-  <tr class="header-row">
-    <td>單位<br>Đơn vị:</td>
-    <td colspan="2">{{ info.don_vi }}</td>
-    <td>姓名<br>Họ tên:</td>
-    <td colspan="2">{{ info.ho_ten }}</td>
-    <td>卡號<br>Số thẻ:</td>
-    <td colspan="2">{{ info.so_the }}</td>
-    <td colspan="2">主管<br>Chủ quản: {{ info.chu_quan }}</td>
-  </tr>
+  <table>
+    {# Hàng 1: Thông tin phiếu (Info) #}
+    <tr class="header-row">
+      <td>單位<br>Đơn vị:</td>
+      <td colspan="2">{{ info.don_vi }}</td>
+      <td>姓名<br>Họ tên:</td>
+      <td colspan="2">{{ info.ho_ten }}</td>
+      <td>卡號<br>Số thẻ:</td>
+      <td colspan="2">{{ info.so_the }}</td>
+      <td colspan="2">主管<br>Chủ quản: {{ info.chu_quan }}</td>
+    </tr>
 
-  {# Hàng 2: Header bảng hạng mục #}
-  <tr class="header-row">
-    <td>序號<br>STT</td>
-    <td colspan="2">項目<br>Hạng mục</td>
-    <td colspan="3">用途說明<br>Mục đích sử dụng</td>
-    <td colspan="2">數量單價<br>Số lượng x Đơn giá</td>
-    <td>金額<br>Số tiền</td>
-    <td colspan="2">單據號碼<br>Số chứng từ</td>
-  </tr>
+    {# Hàng 2: Header bảng hạng mục #}
+    <tr class="header-row">
+      <td>序號<br>STT</td>
+      <td colspan="2">項目<br>Hạng mục</td>
+      <td colspan="3">用途說明<br>Mục đích sử dụng</td>
+      <td colspan="2">數量單價<br>Số lượng x Đơn giá</td>
+      <td>金額<br>Số tiền</td>
+      <td colspan="2">單據號碼<br>Số chứng từ</td>
+    </tr>
 
-  {# Hàng 3+: Dữ liệu hạng mục (Line Items) #}
-  {% for item in line_items %}
-  <tr>
-    <td>{{ loop.index }}</td>
-    <td colspan="2">{{ item.hang_muc }}</td>
-    <td colspan="3">{{ item.muc_dich }}</td>
-    <td colspan="2">{{ item.so_luong_don_gia }}</td>
-    <td>{{ item.so_tien }}</td>
-    <td colspan="2">{{ item.so_chung_tu }}</td>
-  </tr>
-  {% endfor %}
+    {# Hàng 3+: Dữ liệu hạng mục (Line Items) #}
+    {% for item in line_items %}
+    <tr>
+      <td>{{ loop.index }}</td>
+      <td colspan="2">{{ item.hang_muc }}</td>
+      <td colspan="3">{{ item.muc_dich }}</td>
+      <td colspan="2">{{ item.so_luong_don_gia }}</td>
+      <td>{{ item.so_tien }}</td>
+      <td colspan="2">{{ item.so_chung_tu }}</td>
+    </tr>
+    {% endfor %}
 
-  {# Footer hàng 1: Số tiền tạm ứng / Ký nhận / Thực chi #}
-  <tr>
-    <td colspan="2">預支金額<br>Số tiền tạm ứng</td>
-    <td colspan="2">{{ footer.so_tien_tam_ung }}</td>
-    <td colspan="2">簽收<br>Ký nhận</td>
-    <td>{{ footer.ky_nhan }}</td>
-    <td colspan="2">實支<br>Thực chi</td>
-    <td colspan="2">{{ footer.thuc_chi }}</td>
-  </tr>
-
-  {# Footer hàng 2: Chữ ký (Tổng giám đốc / Thủ quỹ / Kế toán) #}
-  <tr>
-    <td colspan="2">總經理<br>Tổng Giám Đốc</td>
-    <td colspan="2">{{ footer.tong_giam_doc }}</td>
-    <td colspan="2">出納<br>Thủ quỹ</td>
-    <td>{{ footer.thu_quy_1 }}</td>
-    <td colspan="2">會計<br>Kế toán</td>
-    <td>{{ footer.ke_toan }}</td>
-    <td>出納<br>Thủ quỹ {{ footer.thu_quy_2 }}</td>
-  </tr>
-</table>
+    {# Footer hàng 1: Số tiền tạm ứng / Ký nhận / Thực chi #}
+    <tr>
+      <td colspan="2">預支金額<br>Số tiền tạm ứng</td>
+      <td colspan="2">{{ footer.so_tien_tam_ung }}</td>
+      <td colspan="2">簽收<br>Ký nhận</td>
+      <td>{{ footer.ky_nhan }}</td>
+      <td colspan="2">實支<br>Thực chi</td>
+      <td colspan="2">{{ footer.thuc_chi }}</td>
+    </tr>
+  </table>
 </body>
+
 </html>

@@ -228,6 +228,40 @@ async def get_scan(
     return scan
 
 
+@router.get(
+    "/{scan_id}/export-pdf",
+    summary="Xuất PDF phiếu tạm ứng",
+)
+async def export_pdf(
+    scan_id: str,
+    lang: str = Depends(get_language),
+    current_user: User = Depends(require_permission("scan:read")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Xuất PDF phiếu tạm ứng với chữ ký (chỉ khi COMPLETED)."""
+    from fastapi.responses import FileResponse
+    from fastapi import HTTPException
+    
+    scan = await OCRService.get_scan_result(db, scan_id)
+    if not scan:
+        raise LocalizedHTTPException(status.HTTP_404_NOT_FOUND, "scan.not_found", lang)
+        
+    if scan.workflow_status != "COMPLETED":
+        raise HTTPException(status_code=400, detail="Chỉ xuất PDF khi Workflow COMPLETED")
+
+    from app.services.pdf_service import generate_advance_payment_pdf
+    try:
+        pdf_path = generate_advance_payment_pdf(scan)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Lỗi xuất PDF: {str(e)}")
+        
+    return FileResponse(
+        path=pdf_path,
+        media_type="application/pdf",
+        filename=f"PhieuTamUng_{(scan.ocr_json or {}).get('form_no') or scan_id[:6]}.pdf"
+    )
+
+
 @router.put(
     "/{scan_id}/html",
     response_model=ScanResultResponse,
