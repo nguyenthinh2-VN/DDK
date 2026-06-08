@@ -251,7 +251,7 @@ async def export_pdf(
 
     from app.services.pdf_service import generate_advance_payment_pdf
     try:
-        pdf_path = generate_advance_payment_pdf(scan)
+        pdf_path = await generate_advance_payment_pdf(scan)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Lỗi xuất PDF: {str(e)}")
         

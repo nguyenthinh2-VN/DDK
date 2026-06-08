@@ -1,132 +1,294 @@
 <!DOCTYPE html>
-<html>
+<html lang="vi">
 
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Phiếu Tạm Ứng</title>
   <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
     body {
-      font-family: 'Microsoft JhengHei', 'Noto Sans TC', 'Noto Sans CJK TC', sans-serif;
-      font-size: 12px;
+      font-family: 'Noto Sans', 'DejaVu Sans', 'Arial Unicode MS', Arial, sans-serif;
+      font-size: 11px;
+      color: #1a1a1a;
+      background: #fff;
+      padding: 16px;
+    }
+
+    h2.title {
+      text-align: center;
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 12px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
     }
 
     table {
       width: 100%;
       border-collapse: collapse;
-      margin: auto;
-      word-wrap: break-word;
+      table-layout: fixed;
     }
 
     td,
     th {
-      border: 1px solid #333;
-      padding: 6px 10px;
+      border: 1px solid #555;
+      padding: 6px 8px;
       text-align: center;
       vertical-align: middle;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
     }
 
     th {
-      background-color: #f0f0f0;
+      background-color: #e8e8e8;
+      font-weight: 700;
     }
 
-    .header-row td {
-      font-weight: bold;
+    .label-vi {
+      font-size: 10px;
+      color: #444;
     }
 
-    .signature-img {
-      max-height: 50px;
+    .label-zh {
+      font-size: 9px;
+      color: #777;
+    }
+
+    /* Cột signature cố định chiều cao */
+    .sig-cell {
+      height: 85px;
+      min-height: 85px;
+      vertical-align: middle;
+      padding: 4px;
+    }
+
+    .sig-cell img {
+      max-height: 75px;
+      max-width: 100%;
       display: block;
       margin: auto;
+      object-fit: contain;
     }
 
-    .signature-cell {
-      min-height: 60px;
+    .sig-cell .sig-placeholder {
+      height: 75px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #999;
+      font-size: 9px;
+    }
+
+    /* Hàng dữ liệu */
+    .data-row td {
+      background-color: #fafafa;
+      font-weight: 400;
+      text-align: left;
+    }
+
+    .data-row td:first-child {
+      text-align: center;
+    }
+
+    /* Total row */
+    .total-row td {
+      font-weight: 700;
     }
   </style>
+
 </head>
 
 <body>
+  <!-- HEADER -->
+  <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 12px; padding-bottom: 5px;">
+    
+    <!-- LEFT: Company Info -->
+    <div style="flex: 1;">
+      <div style="font-size: 28px; font-weight: 900; font-style: italic; color: #cc0000; letter-spacing: -2px; margin-bottom: 2px; font-family: Arial, sans-serif;">
+        <span style="display: inline-block; transform: skewX(-15deg);">DDK</span>
+      </div>
+      <div style="font-size: 8px; font-weight: bold; color: #cc0000; letter-spacing: 0.5px;">PRO ACTIVE GLOBAL VIETNAM CO.LTD</div>
+      <div style="font-size: 8px; color: #555;">鋒明 (越南) 國際有限公司</div>
+    </div>
+
+    <!-- CENTER: Title -->
+    <div style="flex: 1; text-align: center; color: #cc0000;">
+      <div style="font-size: 18px; font-weight: bold; letter-spacing: 4px; margin-bottom: 4px;">預支單</div>
+      <div style="font-size: 16px; font-weight: bold; font-family: 'Times New Roman', serif; letter-spacing: 0.5px;">PHIẾU TẠM ỨNG</div>
+    </div>
+
+    <!-- RIGHT: Meta -->
+    <div style="flex: 1; text-align: right; color: #cc0000;">
+      <div style="font-size: 20px; font-weight: normal; letter-spacing: 2px; margin-bottom: 6px;">{{ form_no }}</div>
+      <div style="font-size: 11px; color: #333; display: flex; justify-content: flex-end; gap: 4px; margin-bottom: 4px;">
+        <span style="color: #333;">號碼 :</span>
+        <span style="font-family: monospace; font-size: 12px; letter-spacing: 1px;">..................</span>
+      </div>
+      <div style="font-size: 11px; color: #333; display: flex; justify-content: flex-end; gap: 4px;">
+        <span style="color: #333;">日期 :</span>
+        <span>{{ ngay }}</span>
+      </div>
+    </div>
+  </div>
+
   <table>
-    {# Hàng 1: Thông tin phiếu (Info) #}
-    <tr class="header-row">
-      <td>單位<br>Đơn vị:</td>
-      <td colspan="2">{{ info.don_vi }}</td>
-      <td>姓名<br>Họ tên:</td>
-      <td colspan="2">{{ info.ho_ten }}</td>
-      <td>卡號<br>Số thẻ:</td>
-      <td colspan="2">{{ info.so_the }}</td>
-      <td colspan="2">主管<br>Chủ quản: {{ info.chu_quan }}</td>
-    </tr>
+    <colgroup>
+      <col style="width:12%">
+      <col style="width:16%">
+      <col style="width:12%">
+      <col style="width:16%">
+      <col style="width:8%">
+      <col style="width:14%">
+      <col style="width:8%">
+      <col style="width:14%">
+    </colgroup>
 
-    {# Hàng 2: Header bảng hạng mục #}
-    <tr class="header-row">
-      <td>序號<br>STT</td>
-      <td colspan="2">項目<br>Hạng mục</td>
-      <td colspan="3">用途說明<br>Mục đích sử dụng</td>
-      <td colspan="2">數量單價<br>Số lượng x Đơn giá</td>
-      <td>金額<br>Số tiền</td>
-      <td colspan="2">單據號碼<br>Số chứng từ</td>
-    </tr>
-
-    {# Hàng 3+: Dữ liệu hạng mục (Line Items) #}
-    {% for item in line_items %}
+    <!-- Hàng 1: Thông tin phiếu -->
     <tr>
+      <th>
+        <div class="label-zh">單位</div>
+        <div class="label-vi">Đơn vị:</div>
+      </th>
+      <td>{{ info.don_vi }}</td>
+      <th>
+        <div class="label-zh">姓名</div>
+        <div class="label-vi">Họ tên:</div>
+      </th>
+      <td>{{ info.ho_ten }}</td>
+      <th colspan="2" style="text-align: left; vertical-align: top; padding: 4px;">
+        <div class="label-zh">卡號</div>
+        <div class="label-vi">Số thẻ:</div>
+        <div style="text-align: center; margin-top: 4px; font-weight: normal;">{{ info.so_the }}</div>
+      </th>
+      <th colspan="2" style="text-align: left; vertical-align: top; padding: 4px;">
+        <div class="label-zh">主管</div>
+        <div class="label-vi">Chủ quản:</div>
+        <div style="text-align: center; margin-top: 4px; font-weight: normal;">{{ info.chu_quan }}</div>
+      </th>
+    </tr>
+
+    <!-- Hàng 2: Header bảng hạng mục -->
+    <tr>
+      <th>
+        <div class="label-zh">序號</div>
+        <div class="label-vi">STT</div>
+      </th>
+      <th>
+        <div class="label-zh">項目</div>
+        <div class="label-vi">Hạng mục</div>
+      </th>
+      <th>
+        <div class="label-zh">用途說明</div>
+        <div class="label-vi">Mục đích sử dụng</div>
+      </th>
+      <th>
+        <div class="label-zh">數量單價</div>
+        <div class="label-vi">Số lượng x Đơn giá</div>
+      </th>
+      <th colspan="2">
+        <div class="label-zh">金額</div>
+        <div class="label-vi">Số tiền</div>
+      </th>
+      <th colspan="2">
+        <div class="label-zh">單據號碼</div>
+        <div class="label-vi">Số chứng từ</div>
+      </th>
+    </tr>
+
+    <!-- Hàng dữ liệu hạng mục -->
+    {% for item in line_items %}
+    <tr class="data-row">
       <td>{{ loop.index }}</td>
-      <td colspan="2" style="white-space: pre-wrap;">{{ item.hang_muc }}</td>
-      <td colspan="3" style="white-space: pre-wrap;">{{ item.muc_dich }}</td>
-      <td colspan="2" style="white-space: pre-wrap;">{{ item.so_luong_don_gia }}</td>
-      <td style="white-space: pre-wrap;">{{ item.so_tien }}</td>
+      <td style="white-space: pre-wrap;">{{ item.hang_muc }}</td>
+      <td style="white-space: pre-wrap;">{{ item.muc_dich }}</td>
+      <td style="white-space: pre-wrap; text-align: center;">{{ item.so_luong_don_gia }}</td>
+      <td colspan="2" style="white-space: pre-wrap; text-align: right;">{{ item.so_tien }}</td>
       <td colspan="2" style="white-space: pre-wrap;">{{ item.so_chung_tu }}</td>
     </tr>
     {% endfor %}
 
-    {# Footer hàng 1: Số tiền tạm ứng / Ký nhận / Thực chi #}
-    <tr>
-      <td colspan="2">預支金額<br>Số tiền tạm ứng</td>
-      <td colspan="2">{{ footer.so_tien_tam_ung }}</td>
-      <td colspan="2">簽收<br>Ký nhận</td>
-      <td class="signature-cell">
-        {% if signatures.sign_nhan %}
-        <img class="signature-img" src="{{ signatures.sign_nhan }}" />
+    <!-- Footer hàng 1: Số tiền tạm ứng / Ký nhận / Thực chi -->
+    <tr class="total-row">
+      <th>
+        <div class="label-zh">預支金額</div>
+        <div class="label-vi">Số tiền tạm ứng</div>
+      </th>
+      <td style="text-align: right; font-size: 13px;">
+        {{ footer.so_tien_tam_ung }}
+      </td>
+      <th>
+        <div class="label-zh">簽收</div>
+        <div class="label-vi">Ký nhận</div>
+      </th>
+      <td class="sig-cell">
+        {% if signatures.EMPLOYEE %}
+        <img src="{{ signatures.EMPLOYEE }}" alt="Ký nhận" />
         {% else %}
-        {{ footer.ky_nhan }}
+        <div class="sig-placeholder">{{ footer.ky_nhan }}</div>
         {% endif %}
       </td>
-      <td colspan="2">實支<br>Thực chi</td>
-      <td colspan="2">{{ footer.thuc_chi }}</td>
+      <th colspan="2" style="text-align: left; vertical-align: top; padding: 4px;">
+        <div class="label-zh">實支</div>
+        <div class="label-vi">Thực chi:</div>
+        <div style="text-align: right; margin-top: 10px;">{{ footer.thuc_chi }}</div>
+      </th>
+      <td colspan="2" style="text-align: left; vertical-align: top; padding: 4px; font-size: 10px; line-height: 1.6;">
+        [ &nbsp; ] 補 Bổ sung<br>
+        [ &nbsp; ] 退 Trả lại
+      </td>
     </tr>
 
-    {# Footer hàng 2: Chữ ký (Tổng giám đốc / Thủ quỹ / Kế toán) #}
+    <!-- Footer hàng 2: Chữ ký -->
     <tr>
-      <td colspan="2">總經理<br>Tổng Giám Đốc</td>
-      <td colspan="2" class="signature-cell">
+      <th>
+        <div class="label-zh">總經理</div>
+        <div class="label-vi">Tổng Giám Đốc</div>
+      </th>
+      <td class="sig-cell">
         {% if signatures.CEO %}
-        <img class="signature-img" src="{{ signatures.CEO }}" />
+        <img src="{{ signatures.CEO }}" alt="TGĐ" />
         {% else %}
-        {{ footer.tong_giam_doc }}
+        <div class="sig-placeholder">{{ footer.tong_giam_doc }}</div>
         {% endif %}
       </td>
-      <td colspan="2">出納<br>Thủ quỹ</td>
-      <td class="signature-cell">
+      <th>
+        <div class="label-zh">出納</div>
+        <div class="label-vi">Thủ quỹ</div>
+      </th>
+      <td class="sig-cell">
         {% if signatures.TREASURY %}
-        <img class="signature-img" src="{{ signatures.TREASURY }}" />
+        <img src="{{ signatures.TREASURY }}" alt="Thủ quỹ" />
         {% else %}
-        {{ footer.thu_quy_1 }}
+        <div class="sig-placeholder">{{ footer.thu_quy_1 }}</div>
         {% endif %}
       </td>
-      <td colspan="2">會計<br>Kế toán</td>
-      <td class="signature-cell">
+      <th>
+        <div class="label-zh">會計</div>
+        <div class="label-vi">Kế toán</div>
+      </th>
+      <td class="sig-cell">
         {% if signatures.ACCOUNTING %}
-        <img class="signature-img" src="{{ signatures.ACCOUNTING }}" />
+        <img src="{{ signatures.ACCOUNTING }}" alt="Kế toán" />
         {% else %}
-        {{ footer.ke_toan }}
+        <div class="sig-placeholder">{{ footer.ke_toan }}</div>
         {% endif %}
       </td>
-      <td class="signature-cell">
-        出納<br>Thủ quỹ
+      <th>
+        <div class="label-zh">出納</div>
+        <div class="label-vi">Thủ quỹ</div>
+      </th>
+      <td class="sig-cell">
         {% if signatures.SUB_TREASURY %}
-        <img class="signature-img" src="{{ signatures.SUB_TREASURY }}" />
+        <!-- Tăng size chữ ký thủ quỹ phụ như yêu cầu -->
+        <img src="{{ signatures.SUB_TREASURY }}" alt="Thủ quỹ phụ" style="max-height: 75px; transform: scale(1.15);" />
         {% else %}
-        {{ footer.thu_quy_2 }}
+        <div class="sig-placeholder">{{ footer.thu_quy_2 }}</div>
         {% endif %}
       </td>
     </tr>
