@@ -70,6 +70,9 @@ export default function ScanViewer() {
   const [editedJson, setEditedJson] = useState<any>(null);
   const [saveMessage, setSaveMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
+  // Thêm loading state riêng cho action ký duyệt
+  const [isSignLoading, setIsSignLoading] = useState(false);
+
   // Dimensions for bbox scaling
   const [imgNaturalSize, setImgNaturalSize] = useState({ w: 1, h: 1 });
   const [imgRenderSize, setImgRenderSize] = useState({ w: 1, h: 1 });
@@ -184,7 +187,7 @@ export default function ScanViewer() {
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `PhieuTamUng_${scan.form_no || scan.id.substring(0, 6)}.pdf`);
+      link.setAttribute('download', `PhieuTamUng_${scan.ocr_json?.form_no || scan.id.substring(0, 6)}.pdf`);
       document.body.appendChild(link);
       link.click();
       link.parentNode?.removeChild(link);
@@ -214,6 +217,7 @@ export default function ScanViewer() {
   const handleSelectSignature = async (signatureId: string) => {
     setShowSignatureSelector(false);
     if (!scan) return;
+    setIsSignLoading(true);
     try {
       const res = await axiosClient.post(`/api/scan/${scan.id}/signature`, {
         signature_id: signatureId
@@ -223,33 +227,41 @@ export default function ScanViewer() {
         title: "Thành công",
         description: t('signature.apply_success'),
       });
-    } catch (error: any) {
+    } catch (err) {
+      const error = err as any;
       console.error(error);
       toast({
         variant: "destructive",
         title: "Lỗi",
         description: error.response?.data?.detail || t('signature.apply_fail'),
       });
+    } finally {
+      setIsSignLoading(false);
     }
   };
 
   const handleRemoveDraftSignature = async () => {
     if (!scan) return;
+    setIsSignLoading(true);
     try {
       const res = await axiosClient.delete(`/api/scan/${scan.id}/signature`);
       setScan(res.data);
-    } catch (error: any) {
+    } catch (err) {
+      const error = err as any;
       console.error(error);
       toast({
         variant: "destructive",
         title: "Lỗi",
         description: error.response?.data?.detail || t('signature.remove_fail'),
       });
+    } finally {
+      setIsSignLoading(false);
     }
   };
 
   const handleApprove = async () => {
     if (!scan) return;
+    setIsSignLoading(true);
     try {
       const res = await axiosClient.post(`/api/scan/${scan.id}/approve`, {
         signature_id: null
@@ -259,13 +271,16 @@ export default function ScanViewer() {
         title: "Thành công",
         description: t('signature.approve_success'),
       });
-    } catch (error: any) {
+    } catch (err) {
+      const error = err as any;
       console.error(error);
       toast({
         variant: "destructive",
         title: "Lỗi",
         description: error.response?.data?.detail || t('signature.approve_fail'),
       });
+    } finally {
+      setIsSignLoading(false);
     }
   };
 
@@ -282,7 +297,8 @@ export default function ScanViewer() {
         title: "Thành công",
         description: t('signature.reject_success'),
       });
-    } catch (error: any) {
+    } catch (err) {
+      const error = err as any;
       console.error(error);
       toast({
         variant: "destructive",
@@ -620,6 +636,7 @@ export default function ScanViewer() {
               onApprove={handleApprove}
               onRemoveDraft={handleRemoveDraftSignature}
               getFileUrl={getFileUrl}
+              isLoading={isSignLoading}
             />
 
           </CardContent>

@@ -52,8 +52,8 @@ class WorkflowService:
         )
         db.add(approval)
         await db.commit()
-        await db.refresh(scan)
-        return scan
+        from app.repositories.scan_repository import ScanRepository
+        return await ScanRepository(db).find_by_id(scan.id)
 
     @staticmethod
     async def remove_draft_signature(db: AsyncSession, scan_id: str, user: User) -> ScanResult:
@@ -72,8 +72,8 @@ class WorkflowService:
             )
         )
         await db.commit()
-        await db.refresh(scan)
-        return scan
+        from app.repositories.scan_repository import ScanRepository
+        return await ScanRepository(db).find_by_id(scan.id)
 
     @staticmethod
     async def approve_scan(db: AsyncSession, scan_id: str, user: User, signature_id: str | None = None) -> ScanResult:
@@ -120,8 +120,8 @@ class WorkflowService:
             
         draft_approval.action = "APPROVED"
         await db.commit()
-        await db.refresh(scan)
-        return scan
+        from app.repositories.scan_repository import ScanRepository
+        return await ScanRepository(db).find_by_id(scan.id)
 
     @staticmethod
     async def reject_scan(db: AsyncSession, scan_id: str, user: User, note: str | None = None) -> ScanResult:
@@ -151,5 +151,5 @@ class WorkflowService:
         )
         db.add(approval)
         await db.commit()
-        await db.refresh(scan)
-        return scan
+        from app.repositories.scan_repository import ScanRepository
+        return await ScanRepository(db).find_by_id(scan.id)

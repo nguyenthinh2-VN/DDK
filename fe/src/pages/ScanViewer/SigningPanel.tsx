@@ -39,9 +39,11 @@ interface SigningPanelProps {
   onApprove: () => void;
   onRemoveDraft: () => void;
   getFileUrl: (path?: string) => string;
+  isLoading?: boolean;
 }
 
 import { useTranslation } from "@/hooks/useTranslation";
+import { Loader2 } from "lucide-react";
 
 export default function SigningPanel({
   wfStatus,
@@ -51,6 +53,7 @@ export default function SigningPanel({
   onApprove,
   onRemoveDraft,
   getFileUrl,
+  isLoading,
 }: SigningPanelProps) {
   const { t } = useTranslation();
 
@@ -84,7 +87,11 @@ export default function SigningPanel({
 
               {/* Khu vực chữ ký */}
               <div className="min-h-[3rem] flex items-center justify-center w-full relative">
-                {sigUrl ? (
+                {isLoading && isMyTurn ? (
+                  <div className="flex justify-center items-center h-12">
+                    <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                  </div>
+                ) : sigUrl ? (
                   <div className="relative">
                     <img src={sigUrl} alt="Chữ ký" className="max-h-12 object-contain mx-auto" />
                     {isDraft && (
@@ -106,7 +113,7 @@ export default function SigningPanel({
                     size="sm"
                     className="flex-1 text-xs px-1 text-red-600"
                     onClick={onRemoveDraft}
-                    disabled={!isMyTurn}
+                    disabled={!isMyTurn || isLoading}
                   >
                     <Trash2 className="w-3 h-3 mr-1" /> {t('users.btn.delete') || 'Xóa'}
                   </Button>
@@ -114,7 +121,7 @@ export default function SigningPanel({
                     size="sm"
                     className="flex-1 text-xs px-1"
                     onClick={onApprove}
-                    disabled={!isMyTurn}
+                    disabled={!isMyTurn || isLoading}
                   >
                     <CheckCircle2 className="w-3 h-3 mr-1" /> {t('scan.detail.sign_approve')}
                   </Button>
@@ -125,7 +132,7 @@ export default function SigningPanel({
                   size="sm"
                   className="w-full text-xs"
                   onClick={() => onSign(role)}
-                  disabled={!isMyTurn}
+                  disabled={!isMyTurn || isLoading}
                 >
                   <Stamp className="w-3 h-3 mr-1" />
                   {role === "EMPLOYEE" ? t('scan.detail.sign_submit') : t('scan.detail.sign_approve')}
