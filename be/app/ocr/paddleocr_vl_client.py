@@ -79,7 +79,7 @@ def call_sync(
     *,
     token: str,
     url: str = "https://hanaj6q2m6oc0bpa.aistudio-app.com/layout-parsing",
-    timeout: int = 60,
+    timeout: int = 120,
 ) -> dict:
     """Gọi Sync API. Trả về dict kết quả trực tiếp."""
     headers = {"Authorization": f"token {token}"}
@@ -93,11 +93,17 @@ def call_sync(
         "fileType": 1
     }
     
-    resp = requests.post(url, json=payload, headers=headers, timeout=timeout)
-    if resp.status_code != 200:
-        raise PaddleOCRVLError(f"Sync API failed [{resp.status_code}]: {resp.text}")
-        
-    return resp.json()
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            resp = requests.post(url, json=payload, headers=headers, timeout=timeout)
+            if resp.status_code != 200:
+                raise PaddleOCRVLError(f"Sync API failed [{resp.status_code}]: {resp.text}")
+            return resp.json()
+        except requests.RequestException as e:
+            if attempt == max_retries - 1:
+                raise PaddleOCRVLError(f"Sync API failed after {max_retries} attempts: {str(e)}")
+            time.sleep(3)  # Đợi 3s trước khi thử lại
 
 def poll_job(
     job_id: str,

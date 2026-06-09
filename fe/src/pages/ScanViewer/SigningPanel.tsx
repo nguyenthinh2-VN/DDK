@@ -41,6 +41,8 @@ interface SigningPanelProps {
   getFileUrl: (path?: string) => string;
 }
 
+import { useTranslation } from "@/hooks/useTranslation";
+
 export default function SigningPanel({
   wfStatus,
   userRole,
@@ -50,6 +52,7 @@ export default function SigningPanel({
   onRemoveDraft,
   getFileUrl,
 }: SigningPanelProps) {
+  const { t } = useTranslation();
 
   const getApproval = (role: string) =>
     approvals?.find((a) => a.role === role && (a.action === "APPROVED" || a.action === "DRAFT"));
@@ -105,7 +108,7 @@ export default function SigningPanel({
                     onClick={onRemoveDraft}
                     disabled={!isMyTurn}
                   >
-                    <Trash2 className="w-3 h-3 mr-1" /> Xóa
+                    <Trash2 className="w-3 h-3 mr-1" /> {t('users.btn.delete') || 'Xóa'}
                   </Button>
                   <Button
                     size="sm"
@@ -113,7 +116,7 @@ export default function SigningPanel({
                     onClick={onApprove}
                     disabled={!isMyTurn}
                   >
-                    <CheckCircle2 className="w-3 h-3 mr-1" /> Duyệt
+                    <CheckCircle2 className="w-3 h-3 mr-1" /> {t('scan.detail.sign_approve')}
                   </Button>
                 </div>
               ) : (
@@ -125,7 +128,7 @@ export default function SigningPanel({
                   disabled={!isMyTurn}
                 >
                   <Stamp className="w-3 h-3 mr-1" />
-                  {role === "EMPLOYEE" ? "Ký (Trình)" : "Ký duyệt"}
+                  {role === "EMPLOYEE" ? t('scan.detail.sign_submit') : t('scan.detail.sign_approve')}
                 </Button>
               )}
             </div>

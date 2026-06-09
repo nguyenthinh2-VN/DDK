@@ -57,7 +57,7 @@ export default function DashboardLayout() {
           </SidebarHeader>
           <SidebarContent>
             <SidebarGroup>
-              <SidebarGroupLabel>Chức năng chính</SidebarGroupLabel>
+              <SidebarGroupLabel>{t('layout.menu.main_features')}</SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>
                   {menuItems.map((item) => (

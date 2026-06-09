@@ -507,11 +507,11 @@ export default function ScanViewer() {
               </div>
               {isEditing ? (
                 <div className="p-4 space-y-4 bg-muted/10">
-                  <h4 className="font-medium text-sm">Hạng mục (Line Items)</h4>
+                  <h4 className="font-medium text-sm">{t('scan.detail.item')} (Line Items)</h4>
                   {editedJson.line_items?.map((item: any, idx: number) => (
                     <div key={idx} className="p-3 border rounded bg-background shadow-sm">
                       <div className="font-semibold text-sm mb-3 text-primary border-b pb-2 flex items-center justify-between">
-                        <span>Hạng mục {idx + 1}</span>
+                        <span>{t('scan.detail.item_x', { x: (idx + 1).toString() })}</span>
                         <Button
                           variant="ghost"
                           size="sm"
@@ -522,8 +522,8 @@ export default function ScanViewer() {
                         </Button>
                       </div>
                       <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <label className="text-xs text-muted-foreground font-medium">Hạng mục</label>
+                        <div className="space-y-1">
+                          <label className="text-xs text-muted-foreground font-medium">{t('scan.detail.item')}</label>
                           <textarea
                             className="w-full text-sm border rounded p-1 min-h-[40px]"
                             value={item.hang_muc || ""}
@@ -534,8 +534,8 @@ export default function ScanViewer() {
                             }}
                           />
                         </div>
-                        <div>
-                          <label className="text-xs text-muted-foreground">Mục đích</label>
+                        <div className="space-y-1">
+                          <label className="text-xs text-muted-foreground">{t('scan.detail.purpose')}</label>
                           <textarea
                             className="w-full text-sm border rounded p-1 min-h-[40px]"
                             value={item.muc_dich || ""}
@@ -546,8 +546,8 @@ export default function ScanViewer() {
                             }}
                           />
                         </div>
-                        <div>
-                          <label className="text-xs text-muted-foreground">Số lượng / Đơn giá</label>
+                        <div className="space-y-1">
+                          <label className="text-xs text-muted-foreground">{t('scan.detail.qty_price')}</label>
                           <textarea
                             className="w-full text-sm border rounded p-1 min-h-[40px]"
                             value={item.so_luong_don_gia || ""}
@@ -558,8 +558,8 @@ export default function ScanViewer() {
                             }}
                           />
                         </div>
-                        <div>
-                          <label className="text-xs text-muted-foreground">Số tiền</label>
+                        <div className="space-y-1">
+                          <label className="text-xs text-muted-foreground">{t('scan.detail.amount')}</label>
                           <textarea
                             className="w-full text-sm border rounded p-1 min-h-[40px]"
                             value={item.so_tien || ""}
@@ -573,14 +573,14 @@ export default function ScanViewer() {
                       </div>
                     </div>
                   ))}
-                  
+
                   <div className="flex justify-center mt-2">
                     <Button variant="outline" size="sm" onClick={handleAddLineItem} className="w-full border-dashed">
-                      <Plus className="w-4 h-4 mr-2" /> Thêm hạng mục
+                      <Plus className="w-4 h-4 mr-2" /> {t('scan.detail.add_item')}
                     </Button>
                   </div>
 
-                  <h4 className="font-medium text-sm mt-4">Tổng kết (Footer)</h4>
+                  <h4 className="font-medium text-sm mt-4">{t('scan.detail.footer_summary')}</h4>
                   <div className="grid grid-cols-2 gap-2 p-3 border rounded bg-background">
                     <div>
                       <label className="text-xs text-muted-foreground">Số tiền tạm ứng</label>

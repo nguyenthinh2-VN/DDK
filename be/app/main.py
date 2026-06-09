@@ -36,13 +36,13 @@ async def lifespan(app: FastAPI):
     # Startup: Tạo tables nếu chưa có
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-    print(f"✅ {settings.APP_NAME} v{settings.APP_VERSION} started!")
+    print(f"{settings.APP_NAME} v{settings.APP_VERSION} started!")
     
     yield  # App đang chạy
     
     # Shutdown: cleanup
     await engine.dispose()
-    print(f"🛑 {settings.APP_NAME} shutting down...")
+    print(f"{settings.APP_NAME} shutting down...")
 
 
 # ── Create FastAPI App ───────────────────────────────

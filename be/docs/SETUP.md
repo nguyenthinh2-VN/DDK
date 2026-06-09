@@ -48,9 +48,17 @@ py -3.12 -m venv venv
 
 ### Bước 3: Install dependencies
 ```powershell
-pip install -r requirements-dev.txt
+pip install -r requirements.txt
 ```
 > Lần này `pip` install đúng vào `venv`, không lẫn với Python hệ thống.
+
+### Bước 4: Tải trình duyệt cho Playwright (BẮT BUỘC để xuất PDF)
+Sau khi cài đặt thư viện thành công, bạn cần chạy lệnh sau để tải Chromium ẩn:
+```powershell
+playwright install chromium
+```
+> **Lưu ý trên VPS (Linux):** Khi đưa lên VPS Ubuntu/Linux, ngoài lệnh trên bạn có thể phải chạy thêm lệnh `playwright install-deps` để cài các thư viện hệ thống (system dependencies) cần thiết cho Chrome chạy được trên Linux.
+
 
 ---
 

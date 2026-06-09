@@ -62,7 +62,9 @@ export default function Scans() {
   };
 
   const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleString("vi-VN");
+    let d = dateStr;
+    if (d && !d.endsWith('Z')) d += 'Z';
+    return new Date(d).toLocaleString("vi-VN");
   };
 
   const getStatusColor = (status: string) => {

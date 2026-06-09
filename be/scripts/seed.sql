@@ -1,14 +1,14 @@
 USE ddk_ocr;
 
 INSERT IGNORE INTO roles (id, name, display_name, level) VALUES
-  ('4782f8ca-712c-44d1-a5c9-ed02b0cdba6a', 'CEO', 'Tong giam doc', 1),
-  ('31f65a3d-c5d7-47e0-bc65-70c2cb3d888a', 'TREASURY', 'Thu quy', 2),
-  ('8b1e2f3a-d4c5-4b8a-9e7d-f6a5b4c3d2e1', 'SUB_TREASURY', 'Thu quy phu', 5),
-  ('49a6fd9a-6e97-417f-ac59-03086f73b48f', 'ACCOUNTING', 'Ke toan', 3),
-  ('2bbe4eb9-1945-4c59-9e78-e8e3ef601706', 'EMPLOYEE', 'Ky nhan / Maker', 4);
+  ('4782f8ca-712c-44d1-a5c9-ed02b0cdba6a', 'CEO', 'Tổng giám đốc', 1),
+  ('31f65a3d-c5d7-47e0-bc65-70c2cb3d888a', 'TREASURY', 'Thủ quỹ', 2),
+  ('8b1e2f3a-d4c5-4b8a-9e7d-f6a5b4c3d2e1', 'SUB_TREASURY', 'Thủ quỹ phụ', 5),
+  ('49a6fd9a-6e97-417f-ac59-03086f73b48f', 'ACCOUNTING', 'Kế toán', 3),
+  ('2bbe4eb9-1945-4c59-9e78-e8e3ef601706', 'EMPLOYEE', 'Ký nhận / Maker', 4);
 
 INSERT IGNORE INTO permissions (id, code, name) VALUES
-  ('8ef55526-311e-4755-a565-e9abee852249', 'scan:upload', 'Tai anh len de scan'),
+  ('8ef55526-311e-4755-a565-e9abee852249', 'scan:upload', 'Tải ảnh lên để scan'),
   ('39f091e6-2951-4671-98aa-beab0ed44806', 'scan:read', 'Xem ket qua scan'),
   ('ff4a42f1-7ba4-4a56-9db9-283c3df9d575', 'scan:update', 'Chinh sua ket qua scan'),
   ('f0e4f002-625b-44b8-9a82-cc0220f2e369', 'scan:delete', 'Xoa ket qua scan'),

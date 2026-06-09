@@ -142,6 +142,16 @@ const dictionary: Record<string, Record<string, string>> = {
     'users.form.btn_cancel': 'Hủy',
     'users.form.btn_submit': 'Lưu lại',
     'users.form.btn_submitting': 'Đang lưu...',
+    'layout.menu.main_features': 'Chức năng chính',
+    'scan.detail.add_item': 'Thêm hạng mục',
+    'scan.detail.footer_summary': 'Tổng kết (Footer)',
+    'scan.detail.purpose': 'Mục đích',
+    'scan.detail.amount': 'Số tiền',
+    'scan.detail.qty_price': 'Số lượng / Đơn giá',
+    'scan.detail.sign_submit': 'Ký (Trình)',
+    'scan.detail.sign_approve': 'Ký duyệt',
+    'scan.detail.item_x': 'Hạng mục {x}',
+    'scan.detail.item': 'Hạng mục',
   },
   tw: {
     'dashboard.title': '首頁',
@@ -284,6 +294,16 @@ const dictionary: Record<string, Record<string, string>> = {
     'users.form.btn_cancel': '取消',
     'users.form.btn_submit': '儲存',
     'users.form.btn_submitting': '儲存中...',
+    'layout.menu.main_features': '主要功能',
+    'scan.detail.add_item': '新增項目',
+    'scan.detail.footer_summary': '總結 (Footer)',
+    'scan.detail.purpose': '用途說明',
+    'scan.detail.amount': '金額',
+    'scan.detail.qty_price': '數量 / 單價',
+    'scan.detail.sign_submit': '簽名 (提交)',
+    'scan.detail.sign_approve': '核准',
+    'scan.detail.item_x': '項目 {x}',
+    'scan.detail.item': '項目',
   }
 };
 

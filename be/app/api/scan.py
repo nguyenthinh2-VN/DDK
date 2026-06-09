@@ -253,6 +253,8 @@ async def export_pdf(
     try:
         pdf_path = await generate_advance_payment_pdf(scan)
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Lỗi xuất PDF: {str(e)}")
         
     return FileResponse(
